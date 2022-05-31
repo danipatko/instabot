@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        // "noEmit": true,
+        "target": "ESNext",
+        "newLine": "lf",
+        "moduleResolution": "node"
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": []
+}

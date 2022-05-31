@@ -1,0 +1,28 @@
+{
+    "name": "instabot",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "dev": "node index.js && node dist/index.js",
+        "server": "node index.js && nodemon --watch src --exec \"npm run dev\""
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/danipatko/instabot.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/danipatko/instabot/issues"
+    },
+    "homepage": "https://github.com/danipatko/instabot#readme",
+    "dependencies": {
+        "esbuild": "^0.14.42",
+        "nodemon": "^2.0.16"
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.36"
+    }
+}
