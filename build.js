@@ -1,9 +1,9 @@
 const start = Date.now();
 require('esbuild')
     .build({
-        outfile: './dist/bundle.js',
         bundle: true,
         target: 'esnext',
+        outfile: './dist/bundle.js',
         platform: 'node',
         tsconfig: 'tsconfig.json',
         entryPoints: ['./src/index.ts'],
