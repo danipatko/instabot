@@ -3,7 +3,9 @@ require('esbuild')
     .build({
         bundle: true,
         target: 'esnext',
+        format: 'cjs',
         outfile: './dist/bundle.js',
+        external: ['sqlite3'],
         platform: 'node',
         tsconfig: 'tsconfig.json',
         entryPoints: ['./src/index.ts'],
