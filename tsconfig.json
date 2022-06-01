@@ -4,7 +4,8 @@
         // "noEmit": true,
         "target": "ESNext",
         "newLine": "lf",
-        "moduleResolution": "node"
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true
     },
     "include": ["src/**/*.ts"],
     "exclude": []
