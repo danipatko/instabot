@@ -1,5 +1,5 @@
-import { each, get, run } from './index';
 import QueryBuilder from './builder';
+import { each, get, run } from './index';
 
 interface Row {
     id: string;
@@ -39,9 +39,7 @@ export default class Table<T extends Row> {
                 .map((_) => '?')
                 .join(',') +
             ')';
-        const res = await run(insert, ...Object.values(data));
-        console.log(res);
-        // if (!())) console.error(`[error] Failed to insert into table '${this.name}'`);
+        if (!(await run(insert, ...Object.values(data)))) console.error(`[error] Failed to insert into table '${this.name}'`);
     }
 
     // update all params in a single row by id
@@ -65,5 +63,15 @@ export default class Table<T extends Row> {
     // get multiple rows
     public async get(builder: QueryBuilder<T>): Promise<T[]> {
         return await each<T>(builder.query);
+    }
+
+    // drop entire table
+    public async drop() {
+        return await run(`DROP TABLE IF EXISTS ${this.name}`);
+    }
+
+    // remove by id
+    public async remove(id: string) {
+        return await run(`DELETE FROM ${this.name} WHERE id = "?"`, id);
     }
 }
