@@ -1,9 +1,9 @@
-import RedditPost, { IRedditPost } from './post';
+import RedditPost, { RedditMediaPost } from './post';
 
 export interface RedditQueryResult {
     data: {
         dist: number;
-        children: { kind: string; data: IRedditPost }[];
+        children: { kind: string; data: RedditMediaPost }[];
     };
 }
 
@@ -41,7 +41,6 @@ export default class RedditFetch {
         const posts: RedditPost[] = [];
         for (const { data } of result.data.children)
             posts.push(new RedditPost(data));
-
         return posts;
     }
 }

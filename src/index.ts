@@ -5,15 +5,12 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import QueryBuilder from './lib/db/builder';
 import { escape, randStr } from './lib/util';
-import { accessKeys, AccessKeyTable, test } from './lib/tables';
+import { accessKeys, test } from './lib/tables';
 // database tests
 test();
 
-// fs options
-const SAVE_DIR = 'public';
-
 dotenv.config();
-const PRIVATE_TOKEN = process.env.PRIVATE_TOKEN ?? randStr(30);
+const PRIVATE_KEY = process.env.PRIVATE_KEY ?? randStr(30);
 
 const port = 3000;
 const host = 'localhost';
@@ -22,7 +19,7 @@ const app = express();
 app.set('view engine', 'ejs');
 app.use('/static', express.static('public'));
 app.use(bodyParser.json());
-app.use(cookieParser(PRIVATE_TOKEN));
+app.use(cookieParser(PRIVATE_KEY));
 
 // authorization middleware
 app.use((req, res, next) => {
@@ -37,7 +34,7 @@ app.use((req, res, next) => {
     const { token } = req.cookies;
     if (!token) return void res.status(403).send('unauthorized');
 
-    const id = jwt.verify(token, PRIVATE_TOKEN);
+    const id = jwt.verify(token, PRIVATE_KEY);
     if (!id) return void res.status(403).send('unauthorized');
 
     next();
@@ -55,11 +52,11 @@ app.post('/login', async (req, res) => {
     if (!key || key.valid !== 1)
         return void res.status(403).send('invalid token');
 
-    const signed = jwt.sign({ token }, PRIVATE_TOKEN, {
-        expiresIn: 86_400,
+    const signed = jwt.sign({ token }, PRIVATE_KEY, {
+        expiresIn: '7d',
     });
 
-    res.cookie('token', signed, { maxAge: 86_400, sameSite: 'strict' });
+    res.cookie('token', signed, { maxAge: 86_400_000, sameSite: 'strict' });
     res.render('index', { foo: 'bar' });
 });
 

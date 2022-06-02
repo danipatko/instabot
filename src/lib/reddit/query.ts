@@ -54,9 +54,9 @@ export default class RedditQuery {
 
     // build the fetch string
     public build(): string {
-        const params = new URLSearchParams(this.filters).toString();
         let url = REDDIT_HOST + 'r/' + this.subreddit + '/';
         url += this.type + '.json';
+        const params = new URLSearchParams(this.filters).toString();
         if (params.length) url += '?' + params;
         return url;
     }
