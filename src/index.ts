@@ -4,6 +4,8 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
+import RedditFetch from './lib/reddit/fetch';
+import RedditQuery from './lib/reddit/query';
 dotenv.config();
 
 // database tests
@@ -27,6 +29,9 @@ app.use('/static', express.static('public'));
 app.set('view engine', 'ejs');
 
 app.get('/', auth, (req, res) => {
+    const data = RedditFetch.fetch(RedditQuery.create('retarb').in('hot').inTheLast('day').sort('top').build());
+    console.log(data);
+
     res.render('index', { foo: new Date().toLocaleTimeString() });
 });
 

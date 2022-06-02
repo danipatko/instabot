@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path/posix';
+import ffmpeg from 'fluent-ffmpeg';
 import QueryBuilder from '../db/builder';
 import { redditPostTable } from '../tables';
 
@@ -34,6 +35,7 @@ export interface RedditPostBase {
 
 export interface RedditMediaPost extends RedditPostBase {
     media: null | { reddit_video: RedditVideo };
+    secure_media: null | { reddit_video: RedditVideo };
     url: string;
 }
 
@@ -48,6 +50,8 @@ export interface IRedditPost extends RedditPostBase {
     bitrate_kbps?: number;
 }
 
+const clamp = (num: number, min: number, max: number) => Math.max(min, Math.min(max, num));
+
 export default class RedditPost {
     public data: IRedditPost;
 
@@ -60,29 +64,21 @@ export default class RedditPost {
             accepted_by: '',
         };
 
-        if (data.post_hint === 'hosted:video' && data.media)
-            this.data = {
-                ...this.data,
-                ...data.media.reddit_video,
-                url: data.media.reddit_video.fallback_url,
-            };
+        if (data.post_hint === 'hosted:video') {
+            if (data.media) this.data = { ...this.data, ...data.media.reddit_video, url: data.media.reddit_video.fallback_url };
+            else if (data.secure_media) this.data = { ...this.data, ...data.secure_media.reddit_video, url: data.secure_media.reddit_video.fallback_url };
+            else console.error(`[error] Failed to parse reddit post ${data.name}`);
+        }
     }
 
     // fetch by id
     public static get = async (id: string) => await redditPostTable.fetch(id);
 
     // filter
-    public static filter = async (query: QueryBuilder<IRedditPost>) =>
-        await redditPostTable.get(query);
+    public static filter = async (query: QueryBuilder<IRedditPost>) => await redditPostTable.get(query);
 
     // get unaccepted posts
-    public static pending = async () =>
-        await redditPostTable.get(
-            QueryBuilder.select<IRedditPost>()
-                .from('redditpost')
-                .where('accepted')
-                .is(0)
-        );
+    public static pending = async () => await redditPostTable.get(QueryBuilder.select<IRedditPost>().from('redditpost').where('accepted').is(0));
 
     // save in database
     public async save() {
@@ -103,20 +99,13 @@ export default class RedditPost {
     // download a file
     protected async downloadFile(url: string, id: string) {
         const response = await fetch(url);
-        if (!response.ok)
-            return void console.error(`[error] Failed to fetch image ${url}`);
+        if (!response.ok) return void console.error(`[error] Failed to fetch image ${url}`);
 
         try {
             const buffer = Buffer.from(await response.arrayBuffer());
-            fs.writeFileSync(
-                path.join('public', `${id}.${this.getExtension(url)}`),
-                buffer
-            );
+            fs.writeFileSync(path.join('public', `${id}.${this.getExtension(url)}`), buffer);
         } catch (error) {
-            console.error(
-                `[error] Failed to save image ${this.data.url}\n`,
-                error
-            );
+            console.error(`[error] Failed to save image ${this.data.url}\n`, error);
         }
     }
 
@@ -125,8 +114,20 @@ export default class RedditPost {
         await this.downloadFile(this.getAudioUrl(), this.data.name + 'audio');
     }
 
-    public async concatAudio(name: string) {
-        throw 'xd';
+    public async concatAudio() {
+        if (!this.data.bitrate_kbps) return;
+
+        ffmpeg()
+            .input(path.join('public', `${this.data.name}video.mp4`))
+            .videoCodec('copy')
+            .size('720x720') // 1:1 ratio
+            .autopad(true, 'black') // create a black padding around the video
+            .videoBitrate(clamp(this.data.bitrate_kbps, 2000, 4000) + 'k') // 3500 is recommended
+            .input(path.join('public', `${this.data.name}audio.mp4`))
+            .audioCodec('aac')
+            .audioBitrate('256k')
+            .output(path.join('public', `${this.data.name}.mp4`))
+            .run(); // 256 is recommended
     }
 
     protected getExtension(url: string): string | null {

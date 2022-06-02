@@ -5,7 +5,7 @@ require('esbuild')
         target: 'esnext',
         format: 'cjs',
         outfile: './dist/bundle.js',
-        external: ['sqlite3'],
+        external: ['sqlite3', 'fluent-ffmpeg', 'fetch'],
         platform: 'node',
         tsconfig: 'tsconfig.json',
         entryPoints: ['./src/index.ts'],
