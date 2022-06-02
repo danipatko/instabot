@@ -30,16 +30,18 @@ export default class RedditFetch {
             return (await response.json()) as RedditQueryResult;
         } catch (error) {
             console.error(
-                `[error] An error occured when fetching ${url} (failed to retrieve json data)\n${error}`
+                `[error] An error occured when fetching ${url} (failed to retrieve json data)`,
+                error
             );
             return null;
         }
     }
 
     public static getPosts(result: RedditQueryResult): RedditPost[] {
-        for (const post of result.data.children) {
-        }
+        const posts: RedditPost[] = [];
+        for (const { data } of result.data.children)
+            posts.push(new RedditPost(data));
 
-        return [];
+        return posts;
     }
 }

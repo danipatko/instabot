@@ -1,4 +1,5 @@
 export interface IRedditVideo {
+    id: string;
     width: number;
     height: number;
     is_gif: number;
@@ -9,6 +10,7 @@ export interface IRedditVideo {
 // TODO: reddit separates the video from the audio,
 // so it needs to be remade with ffmpeg
 export default class RedditVideo implements IRedditVideo {
+    public id: string;
     public width: number;
     public height: number;
     public is_gif: number;
@@ -21,6 +23,7 @@ export default class RedditVideo implements IRedditVideo {
         this.is_gif = data.is_gif;
         this.duration = data.duration;
         this.bitrate_kbps = data.bitrate_kbps;
+        this.id = data.id;
     }
 
     public async fetchVideo() {
