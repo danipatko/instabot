@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Login</title>
+    </head>
+    <body>
+        <h1>Login</h1>
+        <article>
+            <% if(firstLogin) { %>
+            <div>
+                <section>Welcome. It seems like this is your first time visiting the admin site. Don't worry, an access key has been already been generated for you.</section>
+                <section><%= key %></section>
+                <section>Use this for future logins. You're logged in for 7 days, please make sure to copy the token here or in the access keys section.</section>
+                <a href="/">Continue</a>
+            </div>
+            <% } else { %>
+            <section>
+                <form action="/login" method="post">
+                    <div>
+                        <label for="token">Enter your access token here</label>
+                        <input type="password" name="token" />
+                        <button type="submit">Continue</button>
+                    </div>
+                </form>
+            </section>
+            <% } %>
+        </article>
+    </body>
+</html>

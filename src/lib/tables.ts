@@ -1,20 +1,6 @@
+import { exec, run } from './db';
 import Table from './db/table';
 import { IRedditPost, RedditPostBase } from './reddit/post';
-
-// run('DROP TABLE IF EXISTS admin');
-interface AccessKeyTable {
-    id: string;
-    tag: string;
-    added: number;
-    valid: 0 | 1;
-}
-
-const accessKeys = new Table<AccessKeyTable>('admin', {
-    id: 'VARCHAR(20) UNIQUE PRIMARY KEY',
-    tag: 'TEXT',
-    added: 'INTEGER', // epoch timestamp
-    valid: 'BOOLEAN',
-});
 
 const redditPostTable = new Table<IRedditPost>('redditpost', {
     id: 'VARCHAR(20) UNIQUE PRIMARY KEY',
@@ -40,6 +26,7 @@ const redditPostTable = new Table<IRedditPost>('redditpost', {
 });
 
 export const test = async () => {
+    // await run('DROP TABLE admin');
     /* await accessKeys.insert({
         added: Date.now(),
         id: 'admin',
@@ -51,4 +38,5 @@ export const test = async () => {
     // console.log(nonexistant);
 };
 
-export { accessKeys, AccessKeyTable, RedditPostBase, redditPostTable };
+export * from './db/tables/accesskeys';
+export { RedditPostBase, redditPostTable };

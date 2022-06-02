@@ -23,15 +23,14 @@ export default class Table<T extends Row> {
                 .map(([field, type]) => field + ' ' + type)
                 .join(', ') +
             ')';
-        if (!(await run(table)))
-            console.error(`[error] Failed to create table '${this.name}'`);
+        if (!(await run(table))) console.error(`[error] Failed to create table '${this.name}'`);
     }
 
     // instert a new row
     public async insert(data: T) {
         const keys = Object.keys(data);
         const insert =
-            'INSERT INTO OR IGNORE' +
+            'INSERT OR IGNORE INTO ' +
             this.name +
             ' (' +
             keys.join(',') +
@@ -40,8 +39,7 @@ export default class Table<T extends Row> {
                 .map((_) => '?')
                 .join(',') +
             ')';
-        if (!(await run(insert, ...Object.values(data))))
-            console.error(`[error] Failed to insert into table '${this.name}'`);
+        if (!(await run(insert, ...Object.values(data)))) console.error(`[error] Failed to insert into table '${this.name}'`);
     }
 
     // update all params in a single row by id
@@ -54,8 +52,7 @@ export default class Table<T extends Row> {
                 .map((key) => key + ' = ?')
                 .join(',') +
             ' WHERE id = ?';
-        if (!(await run(update, ...Object.values(data), data.id)))
-            console.error(`[error] Failed to update table '${this.name}'`);
+        if (!(await run(update, ...Object.values(data), data.id))) console.error(`[error] Failed to update table '${this.name}'`);
     }
 
     // get a single row by id

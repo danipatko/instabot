@@ -16,6 +16,14 @@ const run = (sql: string, ...params: any[]): Promise<boolean> =>
         });
     });
 
+const exec = <T>(sql: string, ...params: any[]): Promise<T> =>
+    new Promise<T>((res) => {
+        db.get(sql, params, (err, row) => {
+            if (err !== null) console.error(`[error] Failed to exec query \n${err}`);
+            res(row as T);
+        });
+    });
+
 // get a single row
 const get = <T>(sql: string, ...params: any[]): Promise<T | null> =>
     new Promise((resolve) => {
@@ -41,4 +49,4 @@ const each = <T>(sql: string, ...params: any[]): Promise<T[]> =>
 
 const close = () => {};
 
-export { run, get, each, close };
+export { run, get, exec, each, close };
