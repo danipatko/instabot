@@ -1,35 +1,76 @@
+import QB from '../db/builder';
+import Table from '../db/table';
+import { randStr } from '../util';
+
 const REDDIT_HOST = 'https://reddit.com/';
 
-export type RedditQueryFilter = {
-    [key: string]: any;
+export interface RedditQueryFilter {
+    // [key: string]: any;
     q?: string; // search query
     t?: 'hour' | 'day' | 'week' | 'month' | 'year'; // the time the post was uploaded
+    id: string;
+    type?: 'hot' | 'new' | 'best' | 'search';
     sort?: 'top' | 'hot' | 'new' | 'comments' | 'relevance';
-    include_over_18?: 'on'; // nsfw posts
-};
+    subreddit: string;
+    include_over_18?: 'on' | ''; // nsfw posts
+}
+
+const queryTable = new Table<RedditQueryFilter>('query', {
+    id: 'VARCHAR(20) UNIQUE',
+    q: 'VARCHAR(100)',
+    t: 'VARCHAR(20)',
+    type: 'VARCHAR(20)',
+    sort: 'VARCHAR(20)',
+    subreddit: 'VARCHAR(100)',
+    include_over_18: 'BOOLEAN',
+});
 
 export default class RedditQuery {
-    private type: 'hot' | 'new' | 'best' | 'search' = 'hot';
-    private filters: RedditQueryFilter = {};
-    private subreddit: string;
+    private filters: RedditQueryFilter = { subreddit: '', id: '' };
+
+    // get from db
+    public static async fetch(id: string) {
+        return await queryTable.fetch(id);
+    }
+
+    // parse filters
+    public static from(filters: RedditQueryFilter) {
+        return new RedditQuery(filters.subreddit, filters);
+    }
+
+    public async create() {
+        await queryTable.insert(this.filters);
+    }
+
+    public async update() {
+        await queryTable.update(this.filters);
+    }
+
+    public async getAll() {
+        return await queryTable.get(
+            QB.select<RedditQueryFilter>().from('query')
+        );
+    }
+
+    ///// wrappers
 
     public static sub(sub: string): RedditQuery {
         return new RedditQuery(sub);
     }
 
-    private constructor(sub: string) {
-        this.subreddit = sub;
+    private constructor(subreddit: string, filters?: RedditQueryFilter) {
+        this.filters = { ...filters, subreddit, id: randStr(20) };
     }
 
     // search
     public search(phrase: string) {
         this.filters.q = phrase;
-        this.type = 'search';
+        this.filters.type = 'search';
         return this;
     }
 
     // sort
-    public sort(by: 'top' | 'hot' | 'new' | 'comments' | 'relevance') {
+    public sortBy(by: 'top' | 'hot' | 'new' | 'comments' | 'relevance') {
         this.filters.sort = by;
         return this;
     }
@@ -48,15 +89,17 @@ export default class RedditQuery {
 
     // set type
     public from(type: 'hot' | 'new' | 'best') {
-        this.type = type;
+        this.filters.type = type;
         return this;
     }
 
     // build the fetch string
-    public get query(): string {
-        let url = REDDIT_HOST + 'r/' + this.subreddit + '/';
-        url += this.type + '.json';
-        const params = new URLSearchParams(this.filters).toString();
+    protected get query(): string {
+        let url = REDDIT_HOST + 'r/' + this.filters.subreddit + '/';
+        url += this.filters.type + '.json';
+        const { id, subreddit, type, ...rest } = this.filters;
+
+        const params = new URLSearchParams({ ...rest }).toString();
         if (params.length) url += '?' + params;
         return url;
     }

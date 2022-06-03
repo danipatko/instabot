@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
+import RedditQuery from './lib/reddit/query';
 
 // KEY: 79c2c2ea790aa5484af3
 

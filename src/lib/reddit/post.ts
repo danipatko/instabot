@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path/posix';
-import ffmpeg from 'fluent-ffmpeg';
-import QueryBuilder from '../db/builder';
-import { redditPostTable } from '../tables';
 import { randStr } from '../util';
+import ffmpeg from 'fluent-ffmpeg';
+import QB from '../db/builder';
+import { redditPostTable } from '../tables';
 
 export interface RedditVideo {
     width: number;
@@ -101,15 +101,15 @@ export default class RedditPost implements IRedditPost {
         if (data.post_hint !== 'hosted:video') return;
 
         if (data.media) {
-            this.duration = data.media.reddit_video.duration;
-            this.bitrate_kbps = data.media.reddit_video.bitrate_kbps;
             this.is_gif = data.media.reddit_video.is_gif;
             this.url = data.media.reddit_video.fallback_url;
+            this.duration = data.media.reddit_video.duration;
+            this.bitrate_kbps = data.media.reddit_video.bitrate_kbps;
         } else if (data.secure_media) {
-            this.duration = data.secure_media.reddit_video.duration;
-            this.bitrate_kbps = data.secure_media.reddit_video.bitrate_kbps;
             this.is_gif = data.secure_media.reddit_video.is_gif;
             this.url = data.secure_media.reddit_video.fallback_url;
+            this.duration = data.secure_media.reddit_video.duration;
+            this.bitrate_kbps = data.secure_media.reddit_video.bitrate_kbps;
         }
     }
 
@@ -117,16 +117,13 @@ export default class RedditPost implements IRedditPost {
     public static get = async (id: string) => await redditPostTable.fetch(id);
 
     // filter
-    public static filter = async (query: QueryBuilder<IRedditPost>) =>
+    public static filter = async (query: QB<IRedditPost>) =>
         await redditPostTable.get(query);
 
     // get unaccepted posts
     public static pending = async () =>
         await redditPostTable.get(
-            QueryBuilder.select<IRedditPost>()
-                .from('redditpost')
-                .where('accepted')
-                .is(0)
+            QB.select<IRedditPost>().from('redditpost').where('accepted').is(0)
         );
 
     // save in database

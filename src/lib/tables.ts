@@ -1,12 +1,11 @@
-import { exec, run } from './db';
 import Table from './db/table';
 import { IRedditPost, RedditPostBase } from './reddit/post';
 
 const redditPostTable = new Table<IRedditPost>('redditpost', {
-    id: 'VARCHAR(20) UNIQUE PRIMARY KEY',
+    id: 'VARCHAR(20) PRIMARY KEY',
     ups: 'INTEGER',
     url: 'TEXT',
-    name: 'VARCHAR(30)',
+    name: 'VARCHAR(30) UNIQUE',
     title: 'TEXT',
     score: 'INTEGER',
     downs: 'INTEGER',

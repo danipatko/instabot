@@ -7,7 +7,7 @@ export interface AccessKey {
     tag: string;
     added: number;
     valid: 0 | 1;
-    owner: 0 | 1; // owner key
+    owner: 0 | 1; // is owner key
 }
 
 export const accessKeys = new Table<AccessKey>('admin', {
