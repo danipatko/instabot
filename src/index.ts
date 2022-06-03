@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
 import RedditQuery from './lib/reddit/query';
+import { addQuery, getQuery } from './pages/query';
 
 // KEY: 79c2c2ea790aa5484af3
 
@@ -35,18 +36,12 @@ app.use('/static', express.static('public'));
 app.set('view engine', 'ejs');
 
 app.get('/', auth, async (req, res) => {
-    /* const data = await RedditFetch.fetch(
-        RedditQuery.sub('retarb').from('hot').inTheLast('day').sort('top').query
-    );
-    if (data) {
-        const posts = RedditFetch.getPosts(data);
-        console.log(posts[0]);
-    }// */
-
     res.render('index', { foo: new Date().toLocaleTimeString() });
 });
 
 app.get('/login', getLogin);
 app.post('/login', postLogin);
+app.get('/queries', getQuery);
+app.post('/query/add', addQuery);
 
 app.listen(port, () => console.log(`App listening on http://${host}:${port}`));

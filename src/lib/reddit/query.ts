@@ -46,7 +46,7 @@ export default class RedditQuery {
         await queryTable.update(this.filters);
     }
 
-    public async getAll() {
+    public static async getAll() {
         return await queryTable.get(
             QB.select<RedditQueryFilter>().from('query')
         );
