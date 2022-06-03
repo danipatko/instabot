@@ -1,3 +1,4 @@
+import fetch from 'node-fetch';
 import RedditPost, { RedditMediaPost } from './post';
 
 export interface RedditQueryResult {
@@ -40,7 +41,7 @@ export default class RedditFetch {
     public static getPosts(result: RedditQueryResult): RedditPost[] {
         const posts: RedditPost[] = [];
         for (const { data } of result.data.children)
-            posts.push(new RedditPost(data));
+            posts.push(new RedditPost({ ...data }));
         return posts;
     }
 }

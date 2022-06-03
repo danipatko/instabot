@@ -13,7 +13,7 @@ export default class RedditQuery {
     private filters: RedditQueryFilter = {};
     private subreddit: string;
 
-    public static create(sub: string): RedditQuery {
+    public static sub(sub: string): RedditQuery {
         return new RedditQuery(sub);
     }
 
@@ -47,13 +47,13 @@ export default class RedditQuery {
     }
 
     // set type
-    public in(type: 'hot' | 'new' | 'best') {
+    public from(type: 'hot' | 'new' | 'best') {
         this.type = type;
         return this;
     }
 
     // build the fetch string
-    public build(): string {
+    public get query(): string {
         let url = REDDIT_HOST + 'r/' + this.subreddit + '/';
         url += this.type + '.json';
         const params = new URLSearchParams(this.filters).toString();

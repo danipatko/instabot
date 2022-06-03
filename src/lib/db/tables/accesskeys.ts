@@ -7,6 +7,7 @@ export interface AccessKey {
     tag: string;
     added: number;
     valid: 0 | 1;
+    owner: 0 | 1; // owner key
 }
 
 export const accessKeys = new Table<AccessKey>('admin', {
@@ -14,6 +15,7 @@ export const accessKeys = new Table<AccessKey>('admin', {
     tag: 'TEXT',
     added: 'INTEGER', // epoch timestamp
     valid: 'BOOLEAN',
+    owner: 'BOOLEAN',
 });
 
 export default class AccessKeys {
@@ -24,7 +26,13 @@ export default class AccessKeys {
 
     // check if there is any key
     static async anyKey(): Promise<boolean> {
-        return (await exec<{ count: number }>('SELECT COUNT(*) as count FROM admin')).count > 0;
+        return (
+            (
+                await exec<{ count: number }>(
+                    'SELECT COUNT(*) as count FROM admin'
+                )
+            ).count > 0
+        );
     }
 
     // get all access keys
@@ -39,6 +47,6 @@ export default class AccessKeys {
 
     // add new key
     static async addKey(key: AccessKey) {
-        await accessKeys.insert(key);
+        await accessKeys.insert({ ...key, owner: 0 });
     }
 }

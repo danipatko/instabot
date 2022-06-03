@@ -12,7 +12,7 @@ const redditPostTable = new Table<IRedditPost>('redditpost', {
     downs: 'INTEGER',
     is_gif: 'BOOLEAN',
     author: 'VARCHAR(120)',
-    over18: 'BOOLEAN',
+    over_18: 'BOOLEAN',
     duration: 'INTEGER',
     is_video: 'BOOLEAN',
     accepted: 'BOOLEAN',

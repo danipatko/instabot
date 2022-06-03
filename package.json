@@ -27,6 +27,7 @@
         "express": "^4.18.1",
         "fluent-ffmpeg": "^2.1.2",
         "jsonwebtoken": "^8.5.1",
+        "node-fetch": "^3.2.5",
         "node-gyp": "^9.0.0",
         "nodemon": "^2.0.16",
         "sqlite3": "^5.0.8"
