@@ -9,33 +9,112 @@
     <body>
         <article>
             <h1>Queries</h1>
-            <ul>
-                <% queries.forEach(function(q) { %>
-                <li><%= q.subreddit %></li>
-                <% }); %>
-            </ul>
+            <% if(queries.length > 0) { %>
+            <table>
+                <thead>
+                    <th></th>
+                    <th>Subreddit</th>
+                    <th>Category</th>
+                    <th>Time</th>
+                    <th>Search</th>
+                    <th>Sort</th>
+                    <th>NSFW</th>
+                    <th>Limit</th>
+                    <th>Interval</th>
+                    <th></th>
+                </thead>
+                <tbody>
+                    <% queries.forEach(function(q) { %>
+                    <tr>
+                        <td>
+                            <form action="/query/<%= q.id %>/toggle" method="post">
+                                <% if(q.enabled) { %>
+                                <button type="submit">disable</button>
+                                <% } else { %>
+                                <button type="submit">enable</button>
+                                <% } %>
+                            </form>
+                        </td>
+                        <td><%= q.subreddit %></td>
+                        <td><%= q.type %></td>
+                        <td><%= q.t %></td>
+                        <td><%= q.q %></td>
+                        <td><%= q.sort %></td>
+                        <td><%= q.include_over_18 %></td>
+                        <td><%= q._limit %></td>
+                        <td><%= q.interval %></td>
+                        <td>
+                            <form action="/query/<%= q.id %>/remove" method="post">
+                                <input type="submit" value="remove" />
+                            </form>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } else { %>
+            <section>No queries have been added yet.</section>
+            <% } %>
         </article>
         <article>
-            <h3>Add new</h3>
+            <h3>Add new query</h3>
             <form action="/query/add" method="post">
                 <div>
-                    <div>
-                        <label for="subreddit">Subreddit</label>
-                        <input type="text" name="subreddit" />
-                    </div>
-                    <div>
-                        <label for="include_over_18">NSFW</label>
-                        <input type="checkbox" name="include_over_18" />
-                    </div>
-                    <div>
-                        <label for="sort">Sort by</label>
-                        <select name="sort">
-                            <option value="hot"></option>
-                            <option value="relevance">Relevance</option>
-                            <option value="hot"></option>
-                            <option value="hot"></option>
-                        </select>
-                    </div>
+                    <ul>
+                        <li>
+                            <label for="subreddit">Subreddit</label>
+                            <input type="text" name="subreddit" />
+                        </li>
+                        <li>
+                            <label for="q">Search</label>
+                            <input id="search" type="text" name="q" />
+                        </li>
+                        <li>
+                            <label for="type">Category</label>
+                            <select name="type">
+                                <option value="hot">Hot</option>
+                                <option value="new">New</option>
+                                <option value="best">Best</option>
+                                <option value="search">Search</option>
+                                <option value="rising">Rising</option>
+                            </select>
+                            <div>If search is selected, you need to provide a <a href="#search">search string</a>.</div>
+                        </li>
+                        <li>
+                            <label for="t">From the last</label>
+                            <select name="t">
+                                <option value="hour">Hour</option>
+                                <option value="day">Day</option>
+                                <option value="week">Week</option>
+                                <option value="month">Month</option>
+                                <option value="year">Year</option>
+                                <option value="all">All time</option>
+                            </select>
+                        </li>
+                        <li>
+                            <label for="sort">Sort by</label>
+                            <select name="sort">
+                                <option value="hot">Hot</option>
+                                <option value="top">Top</option>
+                                <option value="new">New</option>
+                                <option value="comments">Comments</option>
+                                <option value="relevance">Relevance</option>
+                            </select>
+                            <div>This is only relevant in searches</div>
+                        </li>
+                        <li>
+                            <label for="include_over_18">Allow NSFW</label>
+                            <input type="checkbox" name="include_over_18" />
+                        </li>
+                        <li>
+                            <label for="limit">Limit</label>
+                            <input type="number" min="1" max="50" name="limit" />
+                        </li>
+                        <li>
+                            <label for="interval">Interval (hour)</label>
+                            <input type="number" min="0" name="interval" />
+                        </li>
+                    </ul>
                     <button type="submit">Add</button>
                 </div>
             </form>

@@ -8,9 +8,11 @@ interface Row {
 export default class Table<T extends Row> {
     protected name: string;
 
-    public constructor(name: string, properties: Record<keyof T, string>) {
+    public constructor(name: string, properties: Record<keyof T, string>, drop?: boolean) {
         this.name = name;
-        this.create(properties);
+        // clear table
+        if (drop) run('DROP TABLE IF EXISTS ' + name).then(() => this.create(properties));
+        else this.create(properties);
     }
 
     // create new table if it doesn't exist already
@@ -44,15 +46,18 @@ export default class Table<T extends Row> {
 
     // update all params in a single row by id
     public async update(data: T) {
+        const { id, ...updateable } = data;
+        console.log(id);
         const update =
             'UPDATE ' +
             this.name +
             ' SET ' +
             Object.keys(data)
-                .map((key) => key + ' = ?')
+                .filter((key) => key !== 'id')
+                .map((key) => key + '=?')
                 .join(',') +
             ' WHERE id = ?';
-        if (!(await run(update, ...Object.values(data), data.id))) console.error(`[error] Failed to update table '${this.name}'`);
+        if (!(await run(update, ...Object.values(updateable), id))) console.error(`[error] Failed to update table '${this.name}'`);
     }
 
     // get a single row by id
@@ -72,6 +77,6 @@ export default class Table<T extends Row> {
 
     // remove by id
     public async remove(id: string) {
-        return await run(`DELETE FROM ${this.name} WHERE id = "?"`, id);
+        return await run(`DELETE FROM ${this.name} WHERE id = ?`, id);
     }
 }

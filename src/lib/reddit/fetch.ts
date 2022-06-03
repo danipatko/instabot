@@ -20,9 +20,7 @@ export default class RedditFetch {
         });
 
         if (!response.ok) {
-            console.error(
-                `[error] An error occured when fetching ${url}\n[${response.status}] ${response.statusText}`
-            );
+            console.error(`[error] An error occured when fetching ${url}\n[${response.status}] ${response.statusText}`);
             return null;
         }
 
@@ -30,18 +28,18 @@ export default class RedditFetch {
         try {
             return (await response.json()) as RedditQueryResult;
         } catch (error) {
-            console.error(
-                `[error] An error occured when fetching ${url} (failed to retrieve json data)`,
-                error
-            );
+            console.error(`[error] An error occured when fetching ${url} (failed to retrieve json data)`, error);
             return null;
         }
     }
 
-    public static getPosts(result: RedditQueryResult): RedditPost[] {
+    // convert results to redditpost classes
+    public static async fetchAll(url: string): Promise<RedditPost[]> {
         const posts: RedditPost[] = [];
-        for (const { data } of result.data.children)
-            posts.push(new RedditPost({ ...data }));
+        const result = await this.fetch(url);
+        if (!result) return posts;
+        // save only media posts (no text posts)
+        for (const { data } of result.data.children) if (data.post_hint === 'image' || data.post_hint === 'hosted:video') posts.push(new RedditPost({ ...data }));
         return posts;
     }
 }

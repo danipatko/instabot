@@ -8,5 +8,23 @@
     </head>
     <body>
         <div><%= foo %></div>
+        <% pending.forEach(function(p) { %>
+        <div>'<%= p.title %>' by <%= p.author %> at <%= new Date(p.created_utc * 1000).toLocaleString() %></div>
+        <div><%= p.ups %>up / <%= p.downs %>down (<%= p.upvote_ratio %> ratio) | <%= p.num_comments %> comments</div>
+        <div>Type: <%= p.post_hint %> (saved as <a target="_blank" href="/<%= p.file %>">/<%= p.file %></a>)</div>
+        <div>NSFW: <%= p.over_18 %></div>
+        <% if(p.is_video) { %>
+        <div>
+            <div>Is GIF: <%= p.is_gif %></div>
+            <div>Bitrate: <%= p.bitrate_kbps %>kbps</div>
+            <div>Duration: <%= p.duration %>s</div>
+            <video width="360" height="360" controls>
+                <source src="/<%= p.file %>" type="video/mp4" />
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <% } %>
+        <div>Accepted: <%= p.accepted %> (by <%= p.accepted_by %>)</div>
+        <% }); %>
     </body>
 </html>
