@@ -119,5 +119,15 @@
                 </div>
             </form>
         </article>
+        <article>
+            <h3>Upcoming queries</h3>
+            <ol>
+                <% queue.forEach(function(q) { %>
+                <li>
+                    <div><%= q.name %> at <%= q.time.toLocaleString() %></div>
+                </li>
+                <% }) %>
+            </ol>
+        </article>
     </body>
 </html>

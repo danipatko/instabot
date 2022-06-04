@@ -1,13 +1,13 @@
-import { exec } from '..';
-import Table from '../table';
-import QueryBuilder from '../builder';
+import { exec } from './db';
+import Table from './db/table';
+import QueryBuilder from './db/builder';
 
 export interface AccessKey {
     id: string;
     tag: string;
     added: number;
     valid: 0 | 1;
-    owner: 0 | 1; // is owner key
+    readonly owner: 0 | 1; // is owner key
 }
 
 export const accessKeys = new Table<AccessKey>('admin', {
@@ -26,13 +26,7 @@ export default class AccessKeys {
 
     // check if there is any key
     static async anyKey(): Promise<boolean> {
-        return (
-            (
-                await exec<{ count: number }>(
-                    'SELECT COUNT(*) as count FROM admin'
-                )
-            ).count > 0
-        );
+        return (await exec<{ count: number }>('SELECT COUNT(*) as count FROM admin')).count > 0;
     }
 
     // get all access keys

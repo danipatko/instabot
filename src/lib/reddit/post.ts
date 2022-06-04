@@ -51,6 +51,7 @@ export interface IRedditPost extends RedditPostBase {
     is_gif: boolean;
     duration?: number; // in seconds
     accepted: boolean; // can upload to insta
+    uploaded: boolean; // can upload to insta
     accepted_by: string; // who marked it
     bitrate_kbps?: number;
     file: string;
@@ -75,6 +76,7 @@ const redditPostTable = new Table<IRedditPost>(
         duration: 'INTEGER',
         is_video: 'BOOLEAN',
         accepted: 'BOOLEAN',
+        uploaded: 'BOOLEAN',
         subreddit: 'VARCHAR(60)',
         post_hint: 'VARCHAR(60)',
         created_utc: 'INTEGER',
@@ -100,6 +102,7 @@ export default class RedditPost implements IRedditPost {
     public is_gif: boolean;
     public is_video: boolean;
     public accepted: boolean;
+    public uploaded: boolean;
     public duration?: number | undefined;
     public subreddit: string;
     public post_hint: 'hosted:video' | 'rich:video' | 'image' | 'self';
@@ -109,43 +112,57 @@ export default class RedditPost implements IRedditPost {
     public upvote_ratio: number;
     public bitrate_kbps?: number | undefined;
 
-    public constructor(_: RedditMediaPost) {
+    public static create(_: RedditMediaPost) {
+        const post: IRedditPost = {
+            ..._,
+            id: randStr(20),
+            url: '',
+            file: '',
+            is_gif: false,
+            accepted: false,
+            uploaded: false,
+            accepted_by: '',
+        };
+        if (_.post_hint !== 'hosted:video') return new RedditPost(post);
+
+        if (_.media) {
+            post.url = _.media.reddit_video.fallback_url;
+            post.is_gif = _.media.reddit_video.is_gif;
+            post.duration = _.media.reddit_video.duration;
+            post.bitrate_kbps = _.media.reddit_video.bitrate_kbps;
+        } else if (_.secure_media) {
+            post.url = _.secure_media.reddit_video.fallback_url;
+            post.is_gif = _.secure_media.reddit_video.is_gif;
+            post.duration = _.secure_media.reddit_video.duration;
+            post.bitrate_kbps = _.secure_media.reddit_video.bitrate_kbps;
+        }
+        post.file = path.join('public', `${post.name}.${this.getExtension(post.url)}`);
+        return new RedditPost(post);
+    }
+
+    public constructor(_: IRedditPost) {
+        this.id = _.id;
         this.url = _.url;
         this.ups = _.ups;
-        this.is_gif = false;
+        this.file = _.file;
         this.name = _.name;
         this.score = _.score;
         this.downs = _.downs;
         this.title = _.title;
         this.author = _.author;
+        this.is_gif = _.is_gif;
         this.over_18 = _.over_18;
+        this.uploaded = _.uploaded;
+        this.accepted = _.accepted;
         this.is_video = _.is_video;
+        this.duration = _.duration;
         this.post_hint = _.post_hint;
         this.subreddit = _.subreddit;
+        this.accepted_by = _.accepted_by;
         this.created_utc = _.created_utc;
         this.upvote_ratio = _.upvote_ratio;
         this.num_comments = _.num_comments;
-
-        this.id = randStr(20);
-        this.file = '';
-        this.accepted = false;
-        this.accepted_by = '';
-
-        if (_.post_hint !== 'hosted:video') return;
-
-        if (_.media) {
-            this.url = _.media.reddit_video.fallback_url;
-            this.is_gif = _.media.reddit_video.is_gif;
-            this.duration = _.media.reddit_video.duration;
-            this.bitrate_kbps = _.media.reddit_video.bitrate_kbps;
-        } else if (_.secure_media) {
-            this.is_gif = _.secure_media.reddit_video.is_gif;
-            this.url = _.secure_media.reddit_video.fallback_url;
-            this.duration = _.secure_media.reddit_video.duration;
-            this.bitrate_kbps = _.secure_media.reddit_video.bitrate_kbps;
-        }
-
-        this.file = path.join('public', `${this.name}.${this.getExtension(this.url)}`);
+        this.bitrate_kbps = _.bitrate_kbps;
     }
 
     // fetch by id
@@ -169,10 +186,8 @@ export default class RedditPost implements IRedditPost {
     // remove from database
     public async remove() {
         await redditPostTable.remove(this.id);
-        fs.unlinkSync(path.join('public', `${this.name}.${this.getExtension(this.url)}`));
+        fs.unlinkSync(path.join('public', `${this.name}.${RedditPost.getExtension(this.url)}`));
     }
-
-    ///// IO stuff
 
     // download a file
     protected async downloadFile(url: string, id: string) {
@@ -181,13 +196,16 @@ export default class RedditPost implements IRedditPost {
 
         try {
             const buffer = Buffer.from(await response.arrayBuffer());
-            fs.writeFileSync(path.join('public', `${id}.${this.getExtension(url)}`), buffer);
+            fs.writeFileSync(path.join('public', `${id}.${RedditPost.getExtension(url)}`), buffer);
         } catch (error) {
             console.error(`[error] Failed to save image ${this.url}\n`, error);
         }
     }
 
     public async download() {
+        // download image
+        if (this.post_hint !== 'hosted:video') return void (await this.downloadFile(this.url, this.name));
+        // download video
         await this.downloadFile(this.url, this.name + 'video');
         await this.downloadFile(this.getAudioUrl(), this.name + 'audio');
         await this.concatAudio();
@@ -215,7 +233,7 @@ export default class RedditPost implements IRedditPost {
         });
     }
 
-    protected getExtension(url: string): string | null {
+    protected static getExtension(url: string): string | null {
         const last = url.split('.').pop();
         if (!last) return null;
         return last.split('?')[0]; // fallback url has query params -> (...DASH_720.mp4?source=fallback)

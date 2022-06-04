@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import RedditPost, { RedditMediaPost } from './post';
+import RedditQuery from './query';
 
 export interface RedditQueryResult {
     data: {
@@ -10,9 +11,9 @@ export interface RedditQueryResult {
 
 export default class RedditFetch {
     // fetch an array of posts
-    public static async fetch(url: string): Promise<RedditQueryResult | null> {
-        console.log(`[info] fetching ${url}`);
-        const response = await fetch(url, {
+    public static async fetch(q: RedditQuery): Promise<RedditQueryResult | null> {
+        console.log(`[info] fetching ${q.url}`);
+        const response = await fetch(q.url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -20,7 +21,7 @@ export default class RedditFetch {
         });
 
         if (!response.ok) {
-            console.error(`[error] An error occured when fetching ${url}\n[${response.status}] ${response.statusText}`);
+            console.error(`[error] An error occured when fetching ${q.url}\n[${response.status}] ${response.statusText}`);
             return null;
         }
 
@@ -28,18 +29,20 @@ export default class RedditFetch {
         try {
             return (await response.json()) as RedditQueryResult;
         } catch (error) {
-            console.error(`[error] An error occured when fetching ${url} (failed to retrieve json data)`, error);
+            console.error(`[error] An error occured when fetching ${q.url} (failed to retrieve json data)`, error);
             return null;
         }
     }
 
     // convert results to redditpost classes
-    public static async fetchAll(url: string): Promise<RedditPost[]> {
+    public static async fetchAll(q: RedditQuery): Promise<RedditPost[]> {
         const posts: RedditPost[] = [];
-        const result = await this.fetch(url);
+        const result = await this.fetch(q);
         if (!result) return posts;
-        // save only media posts (no text posts)
-        for (const { data } of result.data.children) if (data.post_hint === 'image' || data.post_hint === 'hosted:video') posts.push(new RedditPost({ ...data }));
+        // save only media posts or the ones specified
+        for (const { data } of result.data.children) {
+            if ((q.accept_post_hint && data.post_hint === q.accept_post_hint) || data.post_hint === 'hosted:video' || data.post_hint === 'image') posts.push(RedditPost.create(data));
+        }
         return posts;
     }
 }

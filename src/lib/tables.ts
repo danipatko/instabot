@@ -15,5 +15,5 @@ export const test = async () => {
     // console.log(nonexistant);
 };
 
-export * from './db/tables/accesskeys';
+export * from './accesskeys';
 export * from './reddit/post';

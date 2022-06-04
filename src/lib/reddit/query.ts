@@ -1,6 +1,5 @@
 import QB from '../db/builder';
 import Table from '../db/table';
-import { randStr } from '../util';
 
 const REDDIT_HOST = 'https://reddit.com/';
 
@@ -38,7 +37,7 @@ const queryTable = new Table<IRedditQuery>(
         include_over_18: 'BOOLEAN',
         accept_post_hint: 'VARCHAR(20)',
     }
-    // true
+    //  true
 );
 
 export default class RedditQuery implements IRedditQuery {
