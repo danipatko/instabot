@@ -10,8 +10,8 @@ export interface QueueItem {
 
 export default class Queue {
     public items: QueueItem[] = [];
-    public timer: NodeJS.Timer | null;
-    public onTick: (item: QueueItem) => void;
+    private timer: NodeJS.Timer | null;
+    private onTick: (item: QueueItem) => void;
 
     constructor(onTick: (item: QueueItem) => void) {
         this.items = [];
@@ -37,12 +37,12 @@ export default class Queue {
         this.refresh();
     }
 
-    public refresh() {
+    protected refresh() {
         this.sort();
         this.waitForNext();
     }
 
-    public tick() {
+    protected tick() {
         const [item] = this.items.splice(0, 1); // remove the first item
         if (!item) return;
 
@@ -53,7 +53,7 @@ export default class Queue {
     }
 
     // start the timer
-    public waitForNext() {
+    protected waitForNext() {
         if (this.timer) clearInterval(this.timer);
         this.timer = null;
         const next = this.items[0];

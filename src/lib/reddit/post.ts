@@ -53,7 +53,6 @@ export interface IRedditPost extends RedditPostBase {
     accepted: boolean; // can upload to insta
     uploaded: boolean; // can upload to insta
     duration?: number; // in seconds
-    thumbnail?: string;
     accepted_by: string; // who marked it
     bitrate_kbps?: number;
 }
@@ -78,7 +77,6 @@ const redditPostTable = new Table<IRedditPost>(
         is_video: 'BOOLEAN',
         accepted: 'BOOLEAN',
         uploaded: 'BOOLEAN',
-        thumbnail: 'TEXT',
         subreddit: 'VARCHAR(60)',
         post_hint: 'VARCHAR(60)',
         created_utc: 'INTEGER',
@@ -174,7 +172,12 @@ export default class RedditPost implements IRedditPost {
     // get unaccepted posts
     public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0));
 
-    // save in database and download (+ convert if necessary)
+    protected static getExtension(url: string): string | undefined {
+        const last = url.split('.').pop();
+        return last?.split('?')[0]; // fallback url has query params -> (...DASH_720.mp4?source=fallback)
+    }
+
+    // save in database and download
     public async save() {
         console.log(`[info] saving post (${this.id}) to ${this.file}`);
         await redditPostTable.insert({
@@ -197,30 +200,30 @@ export default class RedditPost implements IRedditPost {
         if (!response.ok) return void console.error(`[error] Failed to fetch image ${url}`);
 
         try {
-            const buffer = Buffer.from(await response.arrayBuffer());
-            fs.writeFileSync(path.join('public', `${id}.${RedditPost.getExtension(url)}`), buffer);
+            fs.writeFileSync(path.join('public', `${id}.${RedditPost.getExtension(url)}`), Buffer.from(await response.arrayBuffer()));
         } catch (error) {
             console.error(`[error] Failed to save image ${this.url}\n`, error);
         }
     }
 
+    // download contents associated with the post
     public async download() {
-        // download image
+        // image
         if (this.post_hint !== 'hosted:video') return void (await this.downloadFile(this.url, this.name));
-        // download video
+        // video
         await this.downloadFile(this.url, this.name + 'video');
         await this.downloadFile(this.getAudioUrl(), this.name + 'audio');
-        await this.concatAudio();
+        await this.prepareVideo();
         // wait and remove unnecessary files
         await sleep(1000);
         fs.unlinkSync(path.join('public', `${this.name}video.mp4`));
         fs.unlinkSync(path.join('public', `${this.name}audio.mp4`));
     }
 
-    protected async concatAudio(): Promise<void> {
+    // concat the video and audio, resize, create cover image
+    protected async prepareVideo(): Promise<void> {
         return new Promise((res) => {
             if (!this.bitrate_kbps) return void res();
-
             ffmpeg()
                 .input(path.join('public', `${this.name}video.mp4`))
                 .size('720x720') // 1:1 ratio
@@ -238,16 +241,7 @@ export default class RedditPost implements IRedditPost {
         });
     }
 
-    protected static getExtension(url: string): string | null {
-        const last = url.split('.').pop();
-        if (!last) {
-            console.log('[error] Invalid url:', url);
-            return null;
-        }
-        return last.split('?')[0]; // fallback url has query params -> (...DASH_720.mp4?source=fallback)
-    }
-
-    protected getAudioUrl() {
+    protected getAudioUrl(): string {
         return this.url.replaceAll(/DASH_\d{2,5}/gm, 'DASH_audio');
     }
 }

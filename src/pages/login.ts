@@ -30,14 +30,13 @@ export const postLogin = async (req: Request, res: Response, next: NextFunction)
 };
 
 // log in a user (returns true if login was successful)
-const login = async (res: Response, token: string): Promise<boolean> => {
-    const key = await AccessKeys.fetch(token);
-    if (!key || key.valid !== 1) {
+const login = async (res: Response, id: string): Promise<boolean> => {
+    if (!(await AccessKeys.isValid(id))) {
         res.status(403).send('invalid token');
         return false;
     }
 
-    const signed = jwt.sign({ token }, process.env.PRIVATE_TOKEN ?? '_', {
+    const signed = jwt.sign({ id }, process.env.PRIVATE_TOKEN ?? '_', {
         expiresIn: '7d',
     });
 
@@ -45,13 +44,21 @@ const login = async (res: Response, token: string): Promise<boolean> => {
     return true;
 };
 
+export const getKey = (token: string): string | undefined => {
+    try {
+        const payload = jwt.verify(token, SECRET);
+        return typeof payload == 'string' ? payload : payload.id;
+    } catch (error) {
+        return undefined;
+    }
+};
+
 // middleware for restricted routes
 export const auth = (req: Request, res: Response, next: NextFunction) => {
     const { token } = req.cookies;
     if (!token) return void res.redirect('/login');
     try {
-        const id = jwt.verify(token, SECRET);
-        if (!id) return void res.redirect('/login');
+        if (!getKey(token)) return void res.redirect('/login');
     } catch (error) {
         console.log(`[info] Failed login attempt from ${req.ip}`);
         return void res.redirect('/login');

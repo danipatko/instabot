@@ -5,7 +5,7 @@ const REDDIT_HOST = 'https://reddit.com/';
 
 export interface RedditQueryFilter {
     q?: string; // type must be search, ignored othewise
-    t?: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all'; // the time the post was uploaded
+    t?: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
     type?: 'hot' | 'new' | 'best' | 'search' | 'rising';
     sort?: 'top' | 'hot' | 'new' | 'comments' | 'relevance'; // only when searching
     _limit?: number;
@@ -17,7 +17,6 @@ export interface IRedditQuery extends RedditQueryFilter {
     enabled: 0 | 1;
     interval: number;
     subreddit: string;
-    max_duration: number; // relevant for videos
     accept_post_hint?: 'hosted:video' | 'rich:video' | 'image'; // undefined -> accept any post except self
 }
 
@@ -33,7 +32,6 @@ const queryTable = new Table<IRedditQuery>(
         enabled: 'BOOLEAN',
         interval: 'INTEGER',
         subreddit: 'VARCHAR(100)',
-        max_duration: 'INTEGER',
         include_over_18: 'BOOLEAN',
         accept_post_hint: 'VARCHAR(20)',
     }
@@ -50,7 +48,6 @@ export default class RedditQuery implements IRedditQuery {
     public enabled: 0 | 1 = 1;
     public interval: number = 0;
     public subreddit: string = '';
-    public max_duration: number = 0;
     public include_over_18?: 'on' | '';
     public accept_post_hint?: 'hosted:video' | 'rich:video' | 'image';
 
@@ -92,7 +89,6 @@ export default class RedditQuery implements IRedditQuery {
         this.enabled = _.enabled;
         this.interval = _.interval;
         this.subreddit = _.subreddit;
-        this.max_duration = _.max_duration;
         this.include_over_18 = _.include_over_18;
         this.accept_post_hint = _.accept_post_hint;
     }

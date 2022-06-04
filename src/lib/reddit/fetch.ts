@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
-import RedditPost, { RedditMediaPost } from './post';
 import RedditQuery from './query';
+import RedditPost, { RedditMediaPost } from './post';
 
 export interface RedditQueryResult {
     data: {

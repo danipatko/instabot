@@ -1,15 +1,13 @@
 import dotenv from 'dotenv';
-import { test } from './lib/tables';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import RedditPost from './lib/reddit/post';
-import RedditQuery from './lib/reddit/query';
-import RedditFetch from './lib/reddit/fetch';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
 import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
+import { getAccess } from './pages/access';
 
-// KEY: 70cb1d33ba2649c3d09f
+// KEY: 5faf5ca381aa83509c4b
 
 dotenv.config();
 
@@ -46,12 +44,10 @@ app.get('/', auth, async (req, res) => {
 app.get('/login', getLogin);
 app.post('/login', postLogin);
 
+app.get('/access', getAccess);
 app.get('/queries', getQuery);
 app.post('/query/add', addQuery);
 app.post('/query/:id/toggle', toggleQuery);
 app.post('/query/:id/remove', removeQuery);
 
 app.listen(port, () => console.log(`App listening on http://${host}:${port}`));
-
-// database tests
-test();
