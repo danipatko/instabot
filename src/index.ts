@@ -31,13 +31,11 @@ app.use('/public', express.static('public'));
 app.set('view engine', 'ejs');
 
 app.get('/', auth, async (req, res) => {
-    // const q = await RedditQuery.fetch('0ec81967774c5b4c6bba');
-    // if (!q) return void res.status(404).send('not found');
+    // const q = await RedditQuery.fetch('998f7c81b7cb0f763249');
+    // if (!q) return;
 
-    // const posts = await RedditFetch.fetchAll(q.url);
-    // const p = posts.filter((p) => p.post_hint === 'hosted:video')[0];
-    // console.log(p);
-
+    // const posts = await RedditFetch.fetchAll(q);
+    // const p = posts.filter(async (p) => p.post_hint === 'hosted:video')[0];
     // await p.save();
 
     const pending = await RedditPost.pending();

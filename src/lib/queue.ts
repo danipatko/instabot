@@ -1,3 +1,4 @@
+import RedditFetch from './reddit/fetch';
 import RedditQuery from './reddit/query';
 
 export interface QueueItem {
@@ -8,7 +9,7 @@ export interface QueueItem {
 }
 
 export default class Queue {
-    public items: QueueItem[];
+    public items: QueueItem[] = [];
     public timer: NodeJS.Timer | null;
     public onTick: (item: QueueItem) => void;
 
@@ -44,6 +45,7 @@ export default class Queue {
     public tick() {
         const [item] = this.items.splice(0, 1); // remove the first item
         if (!item) return;
+
         console.log(`[info] tick at item ${item.id} - ${item.name}`);
         this.items.push({ ...item, time: new Date(Date.now() + item.interval * 60 * 60 * 1000) });
         this.refresh();
@@ -57,8 +59,8 @@ export default class Queue {
         const next = this.items[0];
         if (!next) return;
 
-        console.log(`[info] waiting for next item '${next.name}' at ${next.time.toLocaleString()}`);
-        this.timer = setTimeout(this.tick, next.time.getTime() - Date.now());
+        console.log(`[info] Waiting for next item '${next.name}' at ${next.time.toLocaleString()}`);
+        this.timer = setTimeout(() => this.tick(), next.time.getTime() - Date.now());
     }
 
     // get all queries from the database and sort
@@ -79,7 +81,14 @@ export default class Queue {
     }
 }
 
-export const queue: Queue = Queue.init((item) => {
-    console.log('---');
-    console.log(item);
+const queue: Queue = Queue.init(async (item) => {
+    const q = await RedditQuery.fetch(item.id);
+    if (!q) return;
+
+    const posts = await RedditFetch.fetchAll(q);
+    posts.map(async (p) => {
+        // await p.save(); // DEBUG
+    });
 });
+
+export { queue };

@@ -37,7 +37,7 @@ const queryTable = new Table<IRedditQuery>(
         include_over_18: 'BOOLEAN',
         accept_post_hint: 'VARCHAR(20)',
     }
-    //  true
+    // true
 );
 
 export default class RedditQuery implements IRedditQuery {

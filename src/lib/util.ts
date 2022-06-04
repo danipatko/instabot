@@ -27,5 +27,6 @@ export const escape = (str: string): string => {
     });
 };
 
-export const randStr = (len: number) =>
-    randomBytes(Math.floor(len / 2)).toString('hex');
+export const randStr = (len: number) => randomBytes(Math.floor(len / 2)).toString('hex');
+
+export const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));

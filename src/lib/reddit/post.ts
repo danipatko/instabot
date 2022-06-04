@@ -3,7 +3,7 @@ import path from 'path/posix';
 import QB from '../db/builder';
 import fetch from 'node-fetch';
 import Table from '../db/table';
-import { randStr } from '../util';
+import { randStr, sleep } from '../util';
 import ffmpeg from 'fluent-ffmpeg';
 
 ffmpeg.setFfmpegPath(process.platform === 'win32' ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe' : 'ffmpeg');
@@ -39,22 +39,23 @@ export interface RedditPostBase {
 }
 
 export interface RedditMediaPost extends RedditPostBase {
+    url: string;
     media: null | { reddit_video: RedditVideo };
     secure_media: null | { reddit_video: RedditVideo };
-    url: string;
 }
 
 export interface IRedditPost extends RedditPostBase {
     id: string;
     url: string;
     // media
+    file: string;
     is_gif: boolean;
-    duration?: number; // in seconds
     accepted: boolean; // can upload to insta
     uploaded: boolean; // can upload to insta
+    duration?: number; // in seconds
+    thumbnail?: string;
     accepted_by: string; // who marked it
     bitrate_kbps?: number;
-    file: string;
 }
 
 const clamp = (num: number, min: number, max: number) => Math.max(min, Math.min(max, num));
@@ -77,6 +78,7 @@ const redditPostTable = new Table<IRedditPost>(
         is_video: 'BOOLEAN',
         accepted: 'BOOLEAN',
         uploaded: 'BOOLEAN',
+        thumbnail: 'TEXT',
         subreddit: 'VARCHAR(60)',
         post_hint: 'VARCHAR(60)',
         created_utc: 'INTEGER',
@@ -84,8 +86,8 @@ const redditPostTable = new Table<IRedditPost>(
         upvote_ratio: 'REAL',
         num_comments: 'INTEGER',
         bitrate_kbps: 'INTEGER',
-    }
-    // true
+    },
+    true
 );
 
 export default class RedditPost implements IRedditPost {
@@ -116,13 +118,13 @@ export default class RedditPost implements IRedditPost {
         const post: IRedditPost = {
             ..._,
             id: randStr(20),
-            url: '',
             file: '',
             is_gif: false,
             accepted: false,
             uploaded: false,
             accepted_by: '',
         };
+        post.file = path.join('public', `${post.name}.${this.getExtension(post.url)}`);
         if (_.post_hint !== 'hosted:video') return new RedditPost(post);
 
         if (_.media) {
@@ -180,13 +182,13 @@ export default class RedditPost implements IRedditPost {
             accepted: false,
             accepted_by: '',
         });
-        // await this.download();
+        await this.download();
     }
 
     // remove from database
     public async remove() {
         await redditPostTable.remove(this.id);
-        fs.unlinkSync(path.join('public', `${this.name}.${RedditPost.getExtension(this.url)}`));
+        fs.unlinkSync(this.file);
     }
 
     // download a file
@@ -209,9 +211,10 @@ export default class RedditPost implements IRedditPost {
         await this.downloadFile(this.url, this.name + 'video');
         await this.downloadFile(this.getAudioUrl(), this.name + 'audio');
         await this.concatAudio();
-        // remove unnecessary files
-        fs.unlinkSync(path.join('public', `${this.name + 'video'}.mp4`));
-        fs.unlinkSync(path.join('public', `${this.name + 'audio'}.mp4`));
+        // wait and remove unnecessary files
+        await sleep(1000);
+        fs.unlinkSync(path.join('public', `${this.name}video.mp4`));
+        fs.unlinkSync(path.join('public', `${this.name}audio.mp4`));
     }
 
     protected async concatAudio(): Promise<void> {
@@ -227,15 +230,20 @@ export default class RedditPost implements IRedditPost {
                 .audioCodec('aac')
                 .audioBitrate('256k')
                 .output(path.join('public', `${this.name}.mp4`))
-                .once('end', res)
+                // create a cover image too
+                .takeScreenshots({ count: 1, timemarks: ['0.0'], filename: path.join('public', `${this.name}cover.png`) })
                 .on('progress', (p) => console.log(`[info] Converting ${this.name}: ${Math.floor(p.percent)}%`))
+                .once('end', res)
                 .run();
         });
     }
 
     protected static getExtension(url: string): string | null {
         const last = url.split('.').pop();
-        if (!last) return null;
+        if (!last) {
+            console.log('[error] Invalid url:', url);
+            return null;
+        }
         return last.split('?')[0]; // fallback url has query params -> (...DASH_720.mp4?source=fallback)
     }
 
