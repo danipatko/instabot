@@ -89,6 +89,8 @@ const queue: Queue = Queue.init(async (item) => {
     posts.map(async (p) => {
         // await p.save(); // DEBUG
     });
+    const last = posts.pop();
+    last && (await q.nextPage(last.name));
 });
 
 export { queue };

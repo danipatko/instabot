@@ -1,4 +1,4 @@
-import { exec, get } from './db';
+import { exec } from './db';
 import Table from './db/table';
 import QueryBuilder from './db/builder';
 

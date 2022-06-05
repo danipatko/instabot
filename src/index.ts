@@ -6,6 +6,7 @@ import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
 import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
 import { getAccess } from './pages/access';
+import { IGAccount } from './lib/insta/account';
 
 // KEY: 5faf5ca381aa83509c4b
 
@@ -51,3 +52,10 @@ app.post('/query/:id/toggle', toggleQuery);
 app.post('/query/:id/remove', removeQuery);
 
 app.listen(port, () => console.log(`App listening on http://${host}:${port}`));
+
+(async () => {
+    // const acc = IGAccount.create('test', 'test');
+    // await acc.save();
+
+    await IGAccount.getAll();
+})();

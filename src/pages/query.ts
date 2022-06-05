@@ -2,16 +2,17 @@ import { queue } from '../lib/queue';
 import { randStr } from '../lib/util';
 import { Request, Response } from 'express';
 import RedditQuery from '../lib/reddit/query';
+import { IGAccount } from '../lib/insta/account';
 
 export const getQuery = async (req: Request, res: Response) => {
-    res.render('query', { queries: await RedditQuery.getAll(), queue: queue.items });
+    res.render('query', { queries: await RedditQuery.getAll(), queue: queue.items, accounts: await IGAccount.getAll() });
 };
 
 export const addQuery = async (req: Request, res: Response) => {
-    const { subreddit, q, sort, include_over_18, t, type, limit, interval } = req.body;
-    if (!(subreddit && interval)) return void res.status(400).send('missing field from request body');
+    const { subreddit, q, account, sort, include_over_18, t, type, limit, interval, page_reset } = req.body;
+    if (!(subreddit && interval && account)) return void res.status(400).send('missing field from request body');
 
-    const query = RedditQuery.from({ id: randStr(20), subreddit, type, t, q, sort, interval, enabled: 1, include_over_18, _limit: limit });
+    const query = RedditQuery.from({ id: randStr(20), account, subreddit, type, t, q, sort, interval, enabled: 1, include_over_18, _limit: limit, page_reset, page_count: 0 });
     await query.create();
 
     queue.add(query.id);
