@@ -41,7 +41,9 @@ export default class RedditFetch {
         if (!result) return posts;
         // save only media posts or the ones specified
         for (const { data } of result.data.children) {
-            if ((q.accept_post_hint && data.post_hint === q.accept_post_hint) || data.post_hint === 'hosted:video' || data.post_hint === 'image') posts.push(RedditPost.create(data));
+            if ((q.accept_post_hint && data.post_hint === q.accept_post_hint) || data.post_hint === 'hosted:video' || data.post_hint === 'image') {
+                posts.push(RedditPost.create({ ...data, account: q.account }));
+            }
         }
         return posts;
     }

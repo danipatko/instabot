@@ -41,6 +41,7 @@ export interface RedditPostBase {
 export interface RedditMediaPost extends RedditPostBase {
     url: string;
     media: null | { reddit_video: RedditVideo };
+    account?: string;
     secure_media: null | { reddit_video: RedditVideo };
 }
 
@@ -50,8 +51,9 @@ export interface IRedditPost extends RedditPostBase {
     // media
     file: string;
     is_gif: boolean;
+    account?: string; // the account that uploaded the post
     accepted: boolean; // can upload to insta
-    uploaded: boolean; // can upload to insta
+    uploaded: boolean; // is uploaded
     duration?: number; // in seconds
     accepted_by: string; // who marked it
     bitrate_kbps?: number;
@@ -73,6 +75,7 @@ const redditPostTable = new Table<IRedditPost>(
         is_gif: 'BOOLEAN',
         author: 'VARCHAR(120)',
         over_18: 'BOOLEAN',
+        account: 'VARCHAR(20)',
         duration: 'INTEGER',
         is_video: 'BOOLEAN',
         accepted: 'BOOLEAN',
@@ -98,8 +101,9 @@ export default class RedditPost implements IRedditPost {
     public title: string;
     public score: number;
     public author: string;
-    public over_18: boolean;
     public is_gif: boolean;
+    public over_18: boolean;
+    public account?: string; // associated ig account id to upload from
     public is_video: boolean;
     public accepted: boolean;
     public uploaded: boolean;
@@ -152,6 +156,7 @@ export default class RedditPost implements IRedditPost {
         this.author = _.author;
         this.is_gif = _.is_gif;
         this.over_18 = _.over_18;
+        this.account = _.account;
         this.uploaded = _.uploaded;
         this.accepted = _.accepted;
         this.is_video = _.is_video;
