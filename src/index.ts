@@ -40,7 +40,7 @@ app.get('/', auth, async (req, res) => {
 
     const pending = await RedditPost.pending();
     // console.log(pending);
-    res.render('index', { foo: new Date().toLocaleTimeString(), pending, accounts: await IGAccount.getAll() });
+    res.render('index', { foo: new Date().toLocaleTimeString(), pending, accounts: await IGAccount.getDisplay() });
 });
 
 app.get('/login', getLogin);
@@ -64,5 +64,5 @@ app.listen(port, () => console.log(`App listening on http://${host}:${port}`));
     // const acc = IGAccount.create('test', 'test');
     // await acc.save();
 
-    await IGAccount.getAll();
+    await IGAccount.getDisplay();
 })();

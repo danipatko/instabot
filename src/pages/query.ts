@@ -5,7 +5,7 @@ import RedditQuery from '../lib/reddit/query';
 import { IGAccount } from '../lib/insta/account';
 
 export const getQuery = async (req: Request, res: Response) => {
-    res.render('query', { queries: await RedditQuery.getAll(), queue: queue.items, accounts: await IGAccount.getAll() });
+    res.render('query', { queries: await RedditQuery.getAll(), queue: queue.items, accounts: await IGAccount.getDisplay() });
 };
 
 export const addQuery = async (req: Request, res: Response) => {

@@ -57,8 +57,12 @@ export class IGAccount implements InstaAccount {
         return new IGAccount(data);
     }
 
-    public static async getAll(): Promise<InstaAccount[]> {
+    public static async getDisplay(): Promise<InstaAccount[]> {
         return await instaAccounts.get(QueryBuilder.select<InstaAccount>('id', 'username').from('igaccount'));
+    }
+
+    public static async getAll(): Promise<InstaAccount[]> {
+        return await instaAccounts.get(QueryBuilder.select<InstaAccount>().from('igaccount'));
     }
 
     private constructor(_: InstaAccount) {
