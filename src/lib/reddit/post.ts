@@ -197,6 +197,7 @@ export default class RedditPost implements IRedditPost {
     public async remove() {
         await redditPostTable.remove(this.id);
         fs.unlinkSync(this.file);
+        // if(this.post_hint === 'hosted:video') fs.unlinkSync(path('p'));
     }
 
     // download a file

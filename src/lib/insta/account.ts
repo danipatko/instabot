@@ -1,8 +1,9 @@
 import Table from '../db/table';
 import { randStr } from '../util';
 import QueryBuilder from '../db/builder';
-import { IgApiClient } from 'instagram-private-api';
+import { BlockedUsersFeedResponseBlockedListItem, IgApiClient } from 'instagram-private-api';
 import { readFileSync } from 'fs';
+import path from 'path/posix';
 
 // how many actions can an account do in 24 hours
 const CLIENT_ACTION_RATE = 400 / (24 * 60 * 60 * 1000);
@@ -11,20 +12,22 @@ const CLIENT_ACTION_RATE = 400 / (24 * 60 * 60 * 1000);
 export const ig = new IgApiClient();
 
 export interface IGActivity {
-    follow_base?: string; // id of an instagram account to follow its followers
     post_target: number; // number of posts to publish
+    follow_base?: string; // id of an instagram account to follow its followers
     follow_target: number; // number of people to follow
     unfollow_target: number; // number of people to unfollow
 }
 
 export interface InstaAccount extends IGActivity {
     id: string;
+    active: boolean;
     username: string;
     password: string;
 }
 
 const instaAccounts = new Table<InstaAccount>('igaccount', {
     id: 'VARCHAR(20) UNIQUE',
+    active: 'BOOLEAN',
     password: 'VARCHAR(100)',
     username: 'VARCHAR(100)',
     post_target: 'INTEGER',
@@ -35,6 +38,7 @@ const instaAccounts = new Table<InstaAccount>('igaccount', {
 
 export class IGAccount implements InstaAccount {
     public id: string;
+    public active: boolean;
     public actions: number = 0; // the number of actions done by this account
     public username: string;
     public password: string;
@@ -45,7 +49,7 @@ export class IGAccount implements InstaAccount {
     public unfollow_target: number;
 
     public static create(username: string, password: string): IGAccount {
-        return new IGAccount({ id: randStr(20), username, password, follow_target: 0, post_target: 0, unfollow_target: 0, follow_base: '' });
+        return new IGAccount({ id: randStr(20), username, password, active: true, follow_target: 0, post_target: 0, unfollow_target: 0, follow_base: '' });
     }
 
     public static async fetch(id: string): Promise<IGAccount | null> {
@@ -60,6 +64,7 @@ export class IGAccount implements InstaAccount {
 
     private constructor(_: InstaAccount) {
         this.id = _.id;
+        this.active = _.active;
         this.username = _.username;
         this.password = _.password;
         this.follow_base = _.follow_base;
@@ -115,35 +120,22 @@ export class IGAccount implements InstaAccount {
             console.log(`[info] Published video '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
             return res.media.id;
         } catch (error) {
-            console.error(`[error] Failed to publish photo '${file}'`, error);
+            console.error(`[error] Failed to publish video '${file}'`, error);
             return null;
         }
     }
 
     public async publishCarousel(files: { file: string; cover?: string }[], caption: string): Promise<string | null> {
         try {
-            // files.map(({ file, cover }) => {
-
-            //     return {
-            //         coverImage: Buffer.from(readFileSync(cover || '')),
-            //         video: Buffer.from(readFileSync(file)),
-            //         file: Buffer.from(readFileSync(files[0].file)),
-            //     },
-            // })
             const res = await ig.publish.album({
-                // items:[...files.map(({ file, cover }) => {
-                //     return {  }
-                // })],
-                items: [
-                    {
-                        coverImage: Buffer.from(readFileSync(files[0].cover || '')),
-                        video: Buffer.from(readFileSync(files[0].file)),
-                        file: Buffer.from(readFileSync(files[0].file)),
-                    },
-                ],
+                items: files.map(({ file, cover }) => {
+                    const buffer = Buffer.from(readFileSync(file));
+                    if (cover) return { file: buffer, video: buffer, cover: Buffer.from(readFileSync(cover)) };
+                    return { file: buffer };
+                }),
                 caption,
             });
-            console.log(`[info] Published video '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
+            console.log(`[info] Published album '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
             return res.media.id;
         } catch (error) {
             console.error(`[error] Failed to publish album '${JSON.stringify(files)}'\n`, error);

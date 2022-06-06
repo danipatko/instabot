@@ -2,11 +2,11 @@ import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import RedditPost from './lib/reddit/post';
+import { IGAccount } from './lib/insta/account';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
+import { addKey, authOwner, getAccess, removeKey, toggleKey } from './pages/access';
 import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
-import { getAccess } from './pages/access';
-import { IGAccount } from './lib/insta/account';
 
 // KEY: 5faf5ca381aa83509c4b
 
@@ -45,11 +45,15 @@ app.get('/', auth, async (req, res) => {
 app.get('/login', getLogin);
 app.post('/login', postLogin);
 
-app.get('/access', getAccess);
-app.get('/queries', getQuery);
-app.post('/query/add', addQuery);
-app.post('/query/:id/toggle', toggleQuery);
-app.post('/query/:id/remove', removeQuery);
+app.get('/access', authOwner, getAccess);
+app.post('/access/new', authOwner, addKey);
+app.post('/access/:id/toggle', authOwner, toggleKey);
+app.post('/access/:id/remove', authOwner, removeKey);
+
+app.get('/queries', auth, getQuery);
+app.post('/query/add', auth, addQuery);
+app.post('/query/:id/toggle', auth, toggleQuery);
+app.post('/query/:id/remove', auth, removeQuery);
 
 app.listen(port, () => console.log(`App listening on http://${host}:${port}`));
 

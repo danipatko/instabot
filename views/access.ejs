@@ -9,11 +9,41 @@
     <body>
         <main>
             <h1>Manage access</h1>
-            <ul>
-                <% keys.forEach(function(k) { %>
-                <li><%= k.id %></li>
-                <% }) %>
-            </ul>
+            <h3>Keys</h3>
+            <table>
+                <thead>
+                    <th>Valid</th>
+                    <th>Tag</th>
+                    <th>Value</th>
+                    <th>Added at</th>
+                    <th></th>
+                </thead>
+                <tbody>
+                    <% keys.forEach(function(k) { %>
+                    <tr>
+                        <td>
+                            <form action="/access/<%= k.id %>/toggle" method="post">
+                                <button type="submit"><%= k.valid ? 'disable' : 'enable' %></button>
+                            </form>
+                        </td>
+                        <td><%= k.tag %></td>
+                        <td><%= k.id %></td>
+                        <td><%= new Date(k.added).toLocaleString() %></td>
+                        <td>
+                            <form action="/access/<%= k.id %>/remove" method="post">
+                                <button type="submit">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            <ul></ul>
+            <form action="/access/new" method="post">
+                <label for="tag">Add new key</label>
+                <input type="text" name="tag" placeholder="Tag" />
+                <button type="submit">Add</button>
+            </form>
         </main>
     </body>
 </html>
