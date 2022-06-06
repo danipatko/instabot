@@ -3,8 +3,8 @@ import path from 'path/posix';
 import QB from '../db/builder';
 import fetch from 'node-fetch';
 import Table from '../db/table';
-import { randStr, sleep } from '../util';
 import ffmpeg from 'fluent-ffmpeg';
+import { randStr, sleep } from '../util';
 
 ffmpeg.setFfmpegPath(process.platform === 'win32' ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe' : 'ffmpeg');
 
@@ -51,11 +51,13 @@ export interface IRedditPost extends RedditPostBase {
     // media
     file: string;
     is_gif: boolean;
+    caption: string;
     account?: string; // the account that uploaded the post
     accepted: boolean; // can upload to insta
     uploaded: boolean; // is uploaded
     duration?: number; // in seconds
     accepted_by: string; // who marked it
+    accepted_at: number; // when it was marked
     bitrate_kbps?: number;
 }
 
@@ -74,6 +76,7 @@ const redditPostTable = new Table<IRedditPost>(
         downs: 'INTEGER',
         is_gif: 'BOOLEAN',
         author: 'VARCHAR(120)',
+        caption: 'TEXT',
         over_18: 'BOOLEAN',
         account: 'VARCHAR(20)',
         duration: 'INTEGER',
@@ -83,12 +86,13 @@ const redditPostTable = new Table<IRedditPost>(
         subreddit: 'VARCHAR(60)',
         post_hint: 'VARCHAR(60)',
         created_utc: 'INTEGER',
+        accepted_at: 'INTEGER',
         accepted_by: 'VARCHAR(20)',
         upvote_ratio: 'REAL',
         num_comments: 'INTEGER',
         bitrate_kbps: 'INTEGER',
-    },
-    true
+    }
+    // true
 );
 
 export default class RedditPost implements IRedditPost {
@@ -103,6 +107,7 @@ export default class RedditPost implements IRedditPost {
     public author: string;
     public is_gif: boolean;
     public over_18: boolean;
+    public caption: string;
     public account?: string; // associated ig account id to upload from
     public is_video: boolean;
     public accepted: boolean;
@@ -112,6 +117,7 @@ export default class RedditPost implements IRedditPost {
     public post_hint: 'hosted:video' | 'rich:video' | 'image' | 'self';
     public created_utc: number;
     public accepted_by: string;
+    public accepted_at: number;
     public num_comments: number;
     public upvote_ratio: number;
     public bitrate_kbps?: number | undefined;
@@ -122,13 +128,15 @@ export default class RedditPost implements IRedditPost {
             id: randStr(20),
             file: '',
             is_gif: false,
+            caption: RedditPost.defaultCaption(_.title, _.author, _.url),
             accepted: false,
             uploaded: false,
             accepted_by: '',
+            accepted_at: 0,
         };
         post.file = path.join('public', `${post.name}.${this.getExtension(post.url)}`);
-        if (_.post_hint !== 'hosted:video') return new RedditPost(post);
 
+        if (_.post_hint !== 'hosted:video') return new RedditPost(post);
         if (_.media) {
             post.url = _.media.reddit_video.fallback_url;
             post.is_gif = _.media.reddit_video.is_gif;
@@ -155,6 +163,7 @@ export default class RedditPost implements IRedditPost {
         this.title = _.title;
         this.author = _.author;
         this.is_gif = _.is_gif;
+        this.caption = _.caption;
         this.over_18 = _.over_18;
         this.account = _.account;
         this.uploaded = _.uploaded;
@@ -164,6 +173,7 @@ export default class RedditPost implements IRedditPost {
         this.post_hint = _.post_hint;
         this.subreddit = _.subreddit;
         this.accepted_by = _.accepted_by;
+        this.accepted_at = _.accepted_at;
         this.created_utc = _.created_utc;
         this.upvote_ratio = _.upvote_ratio;
         this.num_comments = _.num_comments;
@@ -171,11 +181,17 @@ export default class RedditPost implements IRedditPost {
     }
 
     // fetch by id
-    public static fetch = async (id: string) => await redditPostTable.fetch(id);
+    public static fetch = async (id: string): Promise<RedditPost | null> => {
+        const post = await redditPostTable.fetch(id);
+        return post ? new RedditPost(post) : null;
+    };
+
     // filter
     public static get = async (query: QB<IRedditPost>) => await redditPostTable.get(query);
     // get unaccepted posts
     public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0));
+
+    public update = async () => await redditPostTable.update(this);
 
     protected static getExtension(url: string): string | undefined {
         const last = url.split('.').pop();
@@ -249,5 +265,18 @@ export default class RedditPost implements IRedditPost {
 
     protected getAudioUrl(): string {
         return this.url.replaceAll(/DASH_\d{2,5}/gm, 'DASH_audio');
+    }
+
+    public static defaultCaption(title: string, author: string, url: string): string {
+        return `${title}\nCredit to ${author}\n${url}`;
+    }
+
+    public async approve(caption: string, accountId: string, by: string) {
+        this.account = accountId;
+        this.accepted = true;
+        this.accepted_by = by;
+        this.accepted_at = Date.now();
+        this.caption = caption;
+        await this.update();
     }
 }

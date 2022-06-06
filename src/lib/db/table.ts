@@ -46,18 +46,11 @@ export default class Table<T extends Row> {
 
     // update all params in a single row by id
     public async update(data: T) {
-        const { id, ...updateable } = data;
-        console.log(id);
-        const update =
-            'UPDATE ' +
-            this.name +
-            ' SET ' +
-            Object.keys(data)
-                .filter((key) => key !== 'id')
-                .map((key) => key + '=?')
-                .join(',') +
-            ' WHERE id = ?';
-        if (!(await run(update, ...Object.values(updateable), id))) console.error(`[error] Failed to update table '${this.name}'`);
+        const { id, ...rest } = data;
+        const items = Object.entries(rest).filter(([k, v]) => k != id && (typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean'));
+
+        const update = 'UPDATE ' + this.name + ' SET ' + items.map((x) => x[0] + '=?').join(',') + ' WHERE id = ?';
+        if (!(await run(update, ...items.map((x) => x[1]), id))) console.error(`[error] Failed to update table '${this.name}'`);
     }
 
     // get a single row by id

@@ -1,4 +1,4 @@
-import { queue } from '../lib/queue';
+import { queue } from '../lib/reddit/queue';
 import { randStr } from '../lib/util';
 import { Request, Response } from 'express';
 import RedditQuery from '../lib/reddit/query';

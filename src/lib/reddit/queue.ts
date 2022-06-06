@@ -1,5 +1,5 @@
-import RedditFetch from './reddit/fetch';
-import RedditQuery from './reddit/query';
+import RedditFetch from './fetch';
+import RedditQuery from './query';
 
 export interface QueueItem {
     id: string;
@@ -86,9 +86,8 @@ const queue: Queue = Queue.init(async (item) => {
     if (!q) return;
 
     const posts = await RedditFetch.fetchAll(q);
-    posts.map(async (p) => {
-        // await p.save(); // DEBUG
-    });
+    for (const post of posts) await post.save();
+
     const last = posts.pop();
     last && (await q.nextPage(last.name));
 });

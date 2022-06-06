@@ -1,9 +1,8 @@
 import Table from '../db/table';
 import { randStr } from '../util';
 import QueryBuilder from '../db/builder';
-import { BlockedUsersFeedResponseBlockedListItem, IgApiClient } from 'instagram-private-api';
+import { IgApiClient } from 'instagram-private-api';
 import { readFileSync } from 'fs';
-import path from 'path/posix';
 
 // how many actions can an account do in 24 hours
 const CLIENT_ACTION_RATE = 400 / (24 * 60 * 60 * 1000);
@@ -125,23 +124,23 @@ export class IGAccount implements InstaAccount {
         }
     }
 
-    public async publishCarousel(files: { file: string; cover?: string }[], caption: string): Promise<string | null> {
-        try {
-            const res = await ig.publish.album({
-                items: files.map(({ file, cover }) => {
-                    const buffer = Buffer.from(readFileSync(file));
-                    if (cover) return { file: buffer, video: buffer, cover: Buffer.from(readFileSync(cover)) };
-                    return { file: buffer };
-                }),
-                caption,
-            });
-            console.log(`[info] Published album '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
-            return res.media.id;
-        } catch (error) {
-            console.error(`[error] Failed to publish album '${JSON.stringify(files)}'\n`, error);
-            return null;
-        }
-    }
+    // public async publishCarousel(files: { file: string; cover?: string }[], caption: string): Promise<string | null> {
+    //     try {
+    //         const res = await ig.publish.album({
+    //             items: files.map(({ file, cover }) => {
+    //                 const buffer = Buffer.from(readFileSync(file));
+    //                 if (cover) return { file: buffer, video: buffer, cover: Buffer.from(readFileSync(cover)) };
+    //                 return { file: buffer };
+    //             }),
+    //             caption,
+    //         });
+    //         console.log(`[info] Published album '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
+    //         return res.media.id;
+    //     } catch (error) {
+    //         console.error(`[error] Failed to publish album '${JSON.stringify(files)}'\n`, error);
+    //         return null;
+    //     }
+    // }
 
     public async save(): Promise<void> {
         await instaAccounts.insert(this);

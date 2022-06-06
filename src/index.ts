@@ -7,6 +7,7 @@ import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
 import { addKey, authOwner, getAccess, removeKey, toggleKey } from './pages/access';
 import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
+import { approvePost } from './pages';
 
 // KEY: 5faf5ca381aa83509c4b
 
@@ -39,7 +40,7 @@ app.get('/', auth, async (req, res) => {
 
     const pending = await RedditPost.pending();
     // console.log(pending);
-    res.render('index', { foo: new Date().toLocaleTimeString(), pending });
+    res.render('index', { foo: new Date().toLocaleTimeString(), pending, accounts: await IGAccount.getAll() });
 });
 
 app.get('/login', getLogin);
@@ -54,6 +55,8 @@ app.get('/queries', auth, getQuery);
 app.post('/query/add', auth, addQuery);
 app.post('/query/:id/toggle', auth, toggleQuery);
 app.post('/query/:id/remove', auth, removeQuery);
+
+app.post('/approve/:id', auth, approvePost);
 
 app.listen(port, () => console.log(`App listening on http://${host}:${port}`));
 

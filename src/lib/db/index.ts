@@ -11,7 +11,7 @@ const run = (sql: string, ...params: any[]): Promise<boolean> =>
     new Promise((resolve) => {
         // console.log(`[info] Running query '${sql}'`);
         db.run(sql, params, (err) => {
-            if (err !== null) console.error(`[error] Failed to run query \n${err}`);
+            if (err !== null) console.error(`[error] Failed to run query ${sql} -> [${params.join(', ')}] \n${err}`);
             resolve(err === null);
         });
     });
