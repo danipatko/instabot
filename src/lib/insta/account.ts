@@ -1,8 +1,12 @@
 import Table from '../db/table';
-import { randStr } from '../util';
 import { readFileSync } from 'fs';
 import QueryBuilder from '../db/builder';
 import { AccountFollowersFeed, IgApiClient } from 'instagram-private-api';
+import { clamp, rng, sleep } from '../util';
+import RedditPost from '../reddit/post';
+import path from 'path/posix';
+
+const RATE_LIMIT = 400;
 
 // one and only client
 export const ig = new IgApiClient();
@@ -35,109 +39,77 @@ const instaAccounts = new Table<InstaAccount>('igaccount', {
 });
 
 export class IGAccount {
-    public account: InstaAccount | null = null;
-
-    // public id: string;
-    // public active: boolean;
-    public actions: number = 0; // the number of actions done by this account
-    // public username: string;
-    // public password: string;
-    // public timespan: number;
-    public login_time: number = Date.now(); // the time the account was last logged in
-    // public post_target: number;
-    public follow_base?: string;
-    // public follow_target: number;
-    public followersFeed?: AccountFollowersFeed;
-    public peopleToFollow: number[] = [];
-    // public unfollow_target: number;
-
     private static instance: IGAccount;
-
     public static get _instance(): IGAccount {
         return this.instance || (this.instance = new this());
     }
 
-    // public static create(username: string, password: string): IGAccount {
-    //     return new IGAccount({
-    //         id: randStr(20),
-    //         active: true,
-    //         username,
-    //         password,
-    //         timespan: 12,
-    //         post_target: 0,
-    //         follow_base: '',
-    //         follow_target: 0,
-    //         unfollow_target: 0,
-    //     });
-    // }
-
-    public static async fetch(id: string): Promise<IGAccount | null> {
-        const data = await instaAccounts.fetch(id);
-        return data ? new IGAccount() : null;
+    private constructor() {
+        this.refreshAccounts();
     }
 
+    public async reset() {
+        this.actions = 0;
+        this.current = null;
+        this.loginTime = 0;
+        this.accountCycle = [];
+        this.followersFeed = undefined;
+        this.peopleToFollow = [];
+    }
+
+    public current: InstaAccount | null = null;
+
+    public actions: number = 0; // the number of actions done by this account
+    public loginTime: number = Date.now(); // the time the account was last logged in
+    public followersFeed?: AccountFollowersFeed;
+    public peopleToFollow: number[] = [];
+
+    public accountCycle: string[] = [];
+    public accountCycleIndex: number = 0;
+
+    protected postInterval: NodeJS.Timeout | null = null;
+    protected followInterval: NodeJS.Timeout | null = null;
+
+    // get ids and usernames of accounts
     public static async getDisplay(): Promise<InstaAccount[]> {
-        return await instaAccounts.get(
-            QueryBuilder.select<InstaAccount>('id', 'username').from(
-                'igaccount'
-            )
-        );
+        return await instaAccounts.get(QueryBuilder.select<InstaAccount>('id', 'username').from('igaccount'));
     }
 
+    // get accounts with passwords
     public static async getAll(): Promise<InstaAccount[]> {
-        return await instaAccounts.get(
-            QueryBuilder.select<InstaAccount>().from('igaccount')
-        );
-    }
-
-    private constructor(/* _: InstaAccount*/) {
-        // this.id = _.id;
-        // this.active = _.active;
-        // this.username = _.username;
-        // this.password = _.password;
-        // this.timespan = _.timespan;
-        // this.follow_base = _.follow_base;
-        // this.post_target = _.post_target;
-        // this.follow_target = _.follow_target;
-        // this.unfollow_target = _.unfollow_target;
+        return await instaAccounts.get(QueryBuilder.select<InstaAccount>().from('igaccount'));
     }
 
     // log into instagram
-    public async login() {
+    public static async login(id: string) {
+        const account = await instaAccounts.fetch(id);
+        if (!account) return void console.error(`[error] account '${id}' not found`);
+        this._instance.current = account;
         try {
             await ig.simulate.preLoginFlow();
-            await ig.account.login(this.username, this.password);
-            this.actions = 0;
-            this.login_time = Date.now();
+            await ig.account.login(account.username, account.password);
             process.nextTick(async () => await ig.simulate.postLoginFlow());
         } catch (error) {
-            console.error(
-                `[error] Failed to log into account '${this.username}'`,
-                error
-            );
+            console.error(`[error] Failed to log into account '${account.username}'`, error);
         }
     }
 
     // log out of current account
     public async logout() {
         const { status } = await ig.account.logout();
-        console.log(`[info] logged out of account ${this.username}\n${status}`);
+        console.log(`[info] logged out of account ${this.current?.username}\n${status}`);
+        this.current = null;
     }
 
     // publish a photo
-    public async publishPhoto(
-        file: string,
-        caption: string
-    ): Promise<string | null> {
+    public async publishPhoto(file: string, caption: string): Promise<string | null> {
         try {
             const buffer = Buffer.from(readFileSync(file));
             const res = await ig.publish.photo({
                 file: buffer,
                 caption,
             });
-            console.log(
-                `[info] Published photo '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`
-            );
+            console.log(`[info] Published photo '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
             return res.media.id;
         } catch (error) {
             console.error(`[error] Failed to publish photo '${file}'`, error);
@@ -146,11 +118,7 @@ export class IGAccount {
     }
 
     // upload a video
-    public async publishVideo(
-        caption: string,
-        file: string,
-        cover: string
-    ): Promise<string | null> {
+    public async publishVideo(caption: string, file: string, cover: string): Promise<string | null> {
         try {
             const videoBuf = Buffer.from(readFileSync(file));
             const coverBuf = Buffer.from(readFileSync(cover));
@@ -159,9 +127,7 @@ export class IGAccount {
                 caption,
                 coverImage: coverBuf,
             });
-            console.log(
-                `[info] Published video '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`
-            );
+            console.log(`[info] Published video '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
             return res.media.id;
         } catch (error) {
             console.error(`[error] Failed to publish video '${file}'`, error);
@@ -169,60 +135,86 @@ export class IGAccount {
         }
     }
 
-    protected async follow(id: string | number) {
-        await ig.friendship.create(id);
-    }
+    protected follow = async (id: string | number) => await ig.friendship.create(id);
 
+    protected unfollow = async (id: string | number) => await ig.friendship.destroy(id);
+
+    // follow a person
     public async followNext() {
+        await this.checkToFollow();
         const user = this.peopleToFollow.pop();
         user && (await this.follow(user));
     }
 
-    protected async unfollow(id: string | number) {
-        await ig.friendship.destroy(id);
+    // create a post
+    public async postNext() {
+        const post = await RedditPost.nextUploadable();
+        if (!post) return;
+        if (post.post_hint === 'image') await this.publishPhoto(post.file, post.title);
+        else await this.publishVideo(post.title, post.file, post.cover);
+
+        console.log(`[info] Posted '${post.title}'`);
+        post.uploaded = true;
+        await post.update();
     }
 
-    protected async checkToFollow(): Promise<void> {
+    protected async checkToFollow() {
         // get the follower feed of an account by username
         if (!this.followersFeed) {
-            const id = await ig.user.getIdByUsername(
-                this.follow_base ?? 'instagram'
-            );
+            const id = await ig.user.getIdByUsername(this.current?.follow_base ?? 'instagram'); // default: people following instagram
             this.followersFeed = ig.feed.accountFollowers(id);
         }
-
         // if there are no people to follow, add more
-        if (
-            this.peopleToFollow.length == 0 &&
-            this.followersFeed.isMoreAvailable()
-        )
-            for (const item of await this.followersFeed.items())
-                this.peopleToFollow.unshift(item.pk);
+        if (this.peopleToFollow.length == 0 && this.followersFeed.isMoreAvailable()) for (const item of await this.followersFeed.items()) this.peopleToFollow.unshift(item.pk);
     }
 
-    // public async publishCarousel(files: { file: string; cover?: string }[], caption: string): Promise<string | null> {
-    //     try {
-    //         const res = await ig.publish.album({
-    //             items: files.map(({ file, cover }) => {
-    //                 const buffer = Buffer.from(readFileSync(file));
-    //                 if (cover) return { file: buffer, video: buffer, cover: Buffer.from(readFileSync(cover)) };
-    //                 return { file: buffer };
-    //             }),
-    //             caption,
-    //         });
-    //         console.log(`[info] Published album '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
-    //         return res.media.id;
-    //     } catch (error) {
-    //         console.error(`[error] Failed to publish album '${JSON.stringify(files)}'\n`, error);
-    //         return null;
-    //     }
-    // }
-
-    public async save(): Promise<void> {
-        await instaAccounts.insert(this);
+    public async save() {
+        this.current && (await instaAccounts.insert(this.current));
     }
 
-    public async update(): Promise<void> {
-        await instaAccounts.update(this);
+    public async update() {
+        this.current && (await instaAccounts.update(this.current));
+    }
+
+    private async refreshAccounts() {
+        this.accountCycle = (await IGAccount.getAll()).map((a) => a.id);
+    }
+
+    // remove an account from the cycle
+    public static removeAccount(id: string) {
+        this._instance.accountCycle = this._instance.accountCycle.filter((a) => a != id);
+        if (this._instance.current?.id == id) this.nextAccount();
+    }
+
+    // add an account to the cycle
+    public static addAccount(id: string) {
+        this._instance.accountCycle.push(id);
+    }
+
+    // log into the next acount in the cycle
+    public static async nextAccount() {
+        const id = this._instance.accountCycle[++this._instance.accountCycleIndex % this._instance.accountCycle.length];
+        this._instance.current = await instaAccounts.fetch(id);
+        await this._instance.logout();
+        await sleep(rng(5000, 10000));
+        await this.login(id);
+    }
+
+    public async doActivity() {
+        while (!this.current) {
+            await this.refreshAccounts();
+            await IGAccount.nextAccount();
+        }
+        const timespan = this.current.timespan * 60 * 60 * 1000;
+        const maxActions = this.current.timespan * (RATE_LIMIT / 24);
+        // priorize posting over following
+        const numberOfPosts = clamp(this.current.post_target, 0, maxActions);
+        const postRate = numberOfPosts / timespan;
+
+        const numberOfFollows = clamp(this.current.follow_target, 0, Math.min(maxActions - numberOfPosts, this.current.follow_target));
+        const followRate = numberOfFollows / timespan;
+
+        this.postInterval = setInterval(this.postNext, postRate);
+        this.followInterval = setInterval(this.followNext, followRate);
     }
 }

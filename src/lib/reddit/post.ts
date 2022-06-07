@@ -5,12 +5,9 @@ import fetch from 'node-fetch';
 import Table from '../db/table';
 import ffmpeg from 'fluent-ffmpeg';
 import { randStr, sleep } from '../util';
+import { get } from '../db';
 
-ffmpeg.setFfmpegPath(
-    process.platform === 'win32'
-        ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe'
-        : 'ffmpeg'
-);
+ffmpeg.setFfmpegPath(process.platform === 'win32' ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe' : 'ffmpeg');
 
 export interface RedditVideo {
     width: number;
@@ -65,8 +62,7 @@ export interface IRedditPost extends RedditPostBase {
     bitrate_kbps?: number;
 }
 
-const clamp = (num: number, min: number, max: number) =>
-    Math.max(min, Math.min(max, num));
+const clamp = (num: number, min: number, max: number) => Math.max(min, Math.min(max, num));
 
 const redditPostTable = new Table<IRedditPost>(
     'redditpost',
@@ -139,10 +135,7 @@ export default class RedditPost implements IRedditPost {
             accepted_by: '',
             accepted_at: 0,
         };
-        post.file = path.join(
-            'public',
-            `${post.name}.${this.getExtension(post.url)}`
-        );
+        post.file = path.join('public', `${post.name}.${this.getExtension(post.url)}`);
 
         if (_.post_hint !== 'hosted:video') return new RedditPost(post);
         if (_.media) {
@@ -156,10 +149,7 @@ export default class RedditPost implements IRedditPost {
             post.duration = _.secure_media.reddit_video.duration;
             post.bitrate_kbps = _.secure_media.reddit_video.bitrate_kbps;
         }
-        post.file = path.join(
-            'public',
-            `${post.name}.${this.getExtension(post.url)}`
-        );
+        post.file = path.join('public', `${post.name}.${this.getExtension(post.url)}`);
         return new RedditPost(post);
     }
 
@@ -197,14 +187,16 @@ export default class RedditPost implements IRedditPost {
         return post ? new RedditPost(post) : null;
     };
 
+    // get next post to upload
+    public static async nextUploadable(): Promise<null | RedditPost> {
+        const data = await get<IRedditPost>('SELECT * FROM redditpost WHERE accepted=1 AND uploaded=0 ORDER BY accepted_at ASC LIMIT 1');
+        return data ? new RedditPost(data) : null;
+    }
+
     // filter
-    public static get = async (query: QB<IRedditPost>) =>
-        await redditPostTable.get(query);
+    public static get = async (query: QB<IRedditPost>) => await redditPostTable.get(query);
     // get unaccepted posts
-    public static pending = async () =>
-        await redditPostTable.get(
-            QB.select<IRedditPost>().from('redditpost').where('accepted').is(0)
-        );
+    public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0));
 
     public update = async () => await redditPostTable.update(this);
 
@@ -238,14 +230,10 @@ export default class RedditPost implements IRedditPost {
     // download a file
     protected async downloadFile(url: string, id: string) {
         const response = await fetch(url);
-        if (!response.ok)
-            return void console.error(`[error] Failed to fetch image ${url}`);
+        if (!response.ok) return void console.error(`[error] Failed to fetch image ${url}`);
 
         try {
-            fs.writeFileSync(
-                path.join('public', `${id}.${RedditPost.getExtension(url)}`),
-                Buffer.from(await response.arrayBuffer())
-            );
+            fs.writeFileSync(path.join('public', `${id}.${RedditPost.getExtension(url)}`), Buffer.from(await response.arrayBuffer()));
         } catch (error) {
             console.error(`[error] Failed to save image ${this.url}\n`, error);
         }
@@ -255,8 +243,7 @@ export default class RedditPost implements IRedditPost {
     public async download() {
         try {
             // image
-            if (this.post_hint !== 'hosted:video')
-                return void (await this.downloadFile(this.url, this.name));
+            if (this.post_hint !== 'hosted:video') return void (await this.downloadFile(this.url, this.name));
             // video
             await this.downloadFile(this.url, this.name + 'video');
             await this.downloadFile(this.getAudioUrl(), this.name + 'audio');
@@ -289,13 +276,7 @@ export default class RedditPost implements IRedditPost {
                     timemarks: ['0.0'],
                     filename: path.join('public', `${this.name}cover.png`),
                 })
-                .on('progress', (p) =>
-                    console.log(
-                        `[info] Converting ${this.name}: ${Math.floor(
-                            p.percent
-                        )}%`
-                    )
-                )
+                .on('progress', (p) => console.log(`[info] Converting ${this.name}: ${Math.floor(p.percent)}%`))
                 .once('end', res)
                 .run();
         });
@@ -305,11 +286,11 @@ export default class RedditPost implements IRedditPost {
         return this.url.replaceAll(/DASH_\d{2,5}/gm, 'DASH_audio');
     }
 
-    public static defaultCaption(
-        title: string,
-        author: string,
-        url: string
-    ): string {
+    public get cover(): string {
+        return path.join('public', this.name + 'cover.png');
+    }
+
+    public static defaultCaption(title: string, author: string, url: string): string {
         return `${title}\nCredit to ${author}\n${url}`;
     }
 
