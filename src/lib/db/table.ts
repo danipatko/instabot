@@ -8,10 +8,17 @@ interface Row {
 export default class Table<T extends Row> {
     protected name: string;
 
-    public constructor(name: string, properties: Record<keyof T, string>, drop?: boolean) {
+    public constructor(
+        name: string,
+        properties: Record<keyof T, string>,
+        drop?: boolean
+    ) {
         this.name = name;
         // clear table
-        if (drop) run('DROP TABLE IF EXISTS ' + name).then(() => this.create(properties));
+        if (drop)
+            run('DROP TABLE IF EXISTS ' + name).then(() =>
+                this.create(properties)
+            );
         else this.create(properties);
     }
 
@@ -25,32 +32,50 @@ export default class Table<T extends Row> {
                 .map(([field, type]) => field + ' ' + type)
                 .join(', ') +
             ')';
-        if (!(await run(table))) console.error(`[error] Failed to create table '${this.name}'`);
+        if (!(await run(table)))
+            console.error(`[error] Failed to create table '${this.name}'`);
     }
 
     // instert a new row
     public async insert(data: T) {
-        const keys = Object.keys(data);
+        const items = Object.entries(data).filter(
+            ([k, v]) =>
+                typeof v == 'number' ||
+                typeof v == 'string' ||
+                typeof v == 'boolean'
+        );
+
         const insert =
             'INSERT OR IGNORE INTO ' +
             this.name +
             ' (' +
-            keys.join(',') +
+            items.map((x) => x[0]).join(',') +
             ') VALUES (' +
-            Array.from(keys)
-                .map((_) => '?')
-                .join(',') +
+            items.map((_) => '?').join(',') +
             ')';
-        if (!(await run(insert, ...Object.values(data)))) console.error(`[error] Failed to insert into table '${this.name}'`);
+        if (!(await run(insert, ...items.map((x) => x[1]))))
+            console.error(`[error] Failed to insert into table '${this.name}'`);
     }
 
     // update all params in a single row by id
     public async update(data: T) {
         const { id, ...rest } = data;
-        const items = Object.entries(rest).filter(([k, v]) => k != id && (typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean'));
+        const items = Object.entries(rest).filter(
+            ([k, v]) =>
+                k != id &&
+                (typeof v == 'number' ||
+                    typeof v == 'string' ||
+                    typeof v == 'boolean')
+        );
 
-        const update = 'UPDATE ' + this.name + ' SET ' + items.map((x) => x[0] + '=?').join(',') + ' WHERE id = ?';
-        if (!(await run(update, ...items.map((x) => x[1]), id))) console.error(`[error] Failed to update table '${this.name}'`);
+        const update =
+            'UPDATE ' +
+            this.name +
+            ' SET ' +
+            items.map((x) => x[0] + '=?').join(',') +
+            ' WHERE id = ?';
+        if (!(await run(update, ...items.map((x) => x[1]), id)))
+            console.error(`[error] Failed to update table '${this.name}'`);
     }
 
     // get a single row by id

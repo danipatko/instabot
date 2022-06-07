@@ -5,7 +5,12 @@ require('esbuild')
         target: 'esnext',
         format: 'cjs',
         outfile: './dist/bundle.js',
-        external: ['sqlite3', 'fluent-ffmpeg', 'fetch'],
+        external: [
+            'sqlite3',
+            'fluent-ffmpeg',
+            'fetch',
+            'instagram-private-api',
+        ],
         platform: 'node',
         tsconfig: 'tsconfig.json',
         entryPoints: ['./src/index.ts'],
