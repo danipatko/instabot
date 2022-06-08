@@ -8,42 +8,106 @@
     </head>
     <body>
         <main>
-            <h1>Manage access</h1>
-            <h3>Keys</h3>
-            <table>
-                <thead>
-                    <th>Valid</th>
-                    <th>Tag</th>
-                    <th>Value</th>
-                    <th>Added at</th>
-                    <th></th>
-                </thead>
-                <tbody>
-                    <% keys.forEach(function(k) { %>
-                    <tr>
-                        <td>
-                            <form action="/access/<%= k.id %>/toggle" method="post">
-                                <button type="submit"><%= k.valid ? 'disable' : 'enable' %></button>
+            <article>
+                <h1>Manage access</h1>
+                <h3>Keys</h3>
+                <table>
+                    <thead>
+                        <th>Valid</th>
+                        <th>Tag</th>
+                        <th>Value</th>
+                        <th>Added at</th>
+                        <th></th>
+                    </thead>
+                    <tbody>
+                        <% keys.forEach(function(k) { %>
+                        <tr>
+                            <td>
+                                <form action="/access/<%= k.id %>/toggle" method="post">
+                                    <button type="submit"><%= k.valid ? 'disable' : 'enable' %></button>
+                                </form>
+                            </td>
+                            <td><%= k.tag %></td>
+                            <td><%= k.id %></td>
+                            <td><%= new Date(k.added).toLocaleString() %></td>
+                            <td>
+                                <form action="/access/<%= k.id %>/remove" method="post">
+                                    <button type="submit">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+                <ul></ul>
+                <form action="/access/new" method="post">
+                    <label for="tag">Add new key</label>
+                    <input type="text" name="tag" placeholder="Tag" />
+                    <button type="submit">Add</button>
+                </form>
+            </article>
+            <article>
+                <h1>Instagram accounts and activities</h1>
+                <ul>
+                    <% accounts.forEach((a) => { %>
+                    <li>
+                        <div>
+                            <div>
+                                <b><%= a.username %></b> (<%= a.active ? 'active' : 'disabled' %>)
+                                <form action="/account/<%= a.id %>/toggle" method="post">
+                                    <button type="submit"><%= a.active ? 'disable' : 'enable' %></button>
+                                </form>
+                            </div>
+
+                            <form action="/account/<%= a.id %>/update" method="post">
+                                <div>
+                                    <label for="follow_target">Follow target</label>
+                                    <input name="follow_target" type="number" value="0" min="0" max="400" />
+                                </div>
+                                <div>
+                                    <label for="post_target">Post target</label>
+                                    <input name="post_target" type="number" value="0" min="0" max="400" />
+                                </div>
+                                <div>
+                                    <label for="timespan">Timespan (hours)</label>
+                                    <input name="timespan" type="number" value="24" min="1" max="1000" />
+                                </div>
+                                <div>
+                                    <label for="follow_base">This account's followers will be followed</label>
+                                    <input name="follow_base" type="text" placeholder="Follow base @" />
+                                </div>
                             </form>
-                        </td>
-                        <td><%= k.tag %></td>
-                        <td><%= k.id %></td>
-                        <td><%= new Date(k.added).toLocaleString() %></td>
-                        <td>
-                            <form action="/access/<%= k.id %>/remove" method="post">
-                                <button type="submit">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
+                        </div>
+                    </li>
                     <% }) %>
-                </tbody>
-            </table>
-            <ul></ul>
-            <form action="/access/new" method="post">
-                <label for="tag">Add new key</label>
-                <input type="text" name="tag" placeholder="Tag" />
-                <button type="submit">Add</button>
-            </form>
+                </ul>
+                <div>
+                    <form action="/account/new" method="post">
+                        <div>Add new account</div>
+                        <ul>
+                            <li>
+                                <input type="text" name="username" placeholder="Username" />
+                            </li>
+                            <li>
+                                <input type="password" name="password" placeholder="Password" />
+                            </li>
+                            <li>
+                                <label for="follow_target">Number of people to follow under one timespan</label>
+                                <input name="follow_target" type="number" value="0" min="0" max="400" />
+                            </li>
+                            <li>
+                                <label for="post_target">Number of posts to publish under one timespan</label>
+                                <input name="post_target" type="number" value="0" min="0" max="400" />
+                            </li>
+                            <li>
+                                <label for="timespan">Timespan (hours)</label>
+                                <input name="timespan" type="number" value="24" min="1" />
+                            </li>
+                        </ul>
+                        <button type="submit">Add</button>
+                    </form>
+                </div>
+            </article>
         </main>
     </body>
 </html>

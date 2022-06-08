@@ -5,7 +5,17 @@ import RedditPost from './lib/reddit/post';
 import { IGAccount } from './lib/insta/account';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
-import { addKey, authOwner, getAccess, removeKey, toggleKey } from './pages/access';
+import {
+    addAccount,
+    addKey,
+    authOwner,
+    getAccess,
+    removeAccount,
+    removeKey,
+    toggleAccount,
+    toggleKey,
+    updateAccount,
+} from './pages/access';
 import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
 import { approvePost } from './pages';
 
@@ -50,6 +60,11 @@ app.get('/access', authOwner, getAccess);
 app.post('/access/new', authOwner, addKey);
 app.post('/access/:id/toggle', authOwner, toggleKey);
 app.post('/access/:id/remove', authOwner, removeKey);
+
+app.post('/account/new', authOwner, addAccount);
+app.post('/account/:id/toggle', authOwner, toggleAccount);
+app.post('/account/:id/remove', authOwner, removeAccount);
+app.post('/account/:id/update', authOwner, updateAccount);
 
 app.get('/queries', auth, getQuery);
 app.post('/query/add', auth, addQuery);

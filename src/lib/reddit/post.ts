@@ -7,7 +7,11 @@ import ffmpeg from 'fluent-ffmpeg';
 import { randStr, sleep } from '../util';
 import { get } from '../db';
 
-ffmpeg.setFfmpegPath(process.platform === 'win32' ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe' : 'ffmpeg');
+ffmpeg.setFfmpegPath(
+    process.platform === 'win32'
+        ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe'
+        : 'ffmpeg'
+);
 
 export interface RedditVideo {
     width: number;
@@ -189,14 +193,17 @@ export default class RedditPost implements IRedditPost {
 
     // get next post to upload
     public static async nextUploadable(): Promise<null | RedditPost> {
-        const data = await get<IRedditPost>('SELECT * FROM redditpost WHERE accepted=1 AND uploaded=0 ORDER BY accepted_at ASC LIMIT 1');
+        const data = await get<IRedditPost>(
+            'SELECT * FROM redditpost WHERE accepted=1 AND uploaded=0 ORDER BY accepted_at ASC LIMIT 1'
+        );
         return data ? new RedditPost(data) : null;
     }
 
     // filter
     public static get = async (query: QB<IRedditPost>) => await redditPostTable.get(query);
     // get unaccepted posts
-    public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0));
+    public static pending = async () =>
+        await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0));
 
     public update = async () => await redditPostTable.update(this);
 
@@ -208,12 +215,12 @@ export default class RedditPost implements IRedditPost {
     // save in database and download
     public async save() {
         console.log(`[info] saving post (${this.id}) to ${this.file}`);
+        if (!(await this.download())) return void console.log(`[info] Discarding post ${this.name}`);
         await redditPostTable.insert({
             ...this,
             accepted: false,
             accepted_by: '',
         });
-        await this.download();
     }
 
     // remove from database
@@ -228,57 +235,78 @@ export default class RedditPost implements IRedditPost {
     }
 
     // download a file
-    protected async downloadFile(url: string, id: string) {
+    protected async downloadFile(url: string, id: string): Promise<boolean> {
         const response = await fetch(url);
-        if (!response.ok) return void console.error(`[error] Failed to fetch image ${url}`);
-
+        if (!response.ok) {
+            console.error(`[error] Failed to fetch image ${url}`);
+            return false;
+        }
         try {
-            fs.writeFileSync(path.join('public', `${id}.${RedditPost.getExtension(url)}`), Buffer.from(await response.arrayBuffer()));
+            fs.writeFileSync(
+                path.join('public', `${id}.${RedditPost.getExtension(url)}`),
+                Buffer.from(await response.arrayBuffer())
+            );
+            return true;
         } catch (error) {
             console.error(`[error] Failed to save image ${this.url}\n`, error);
+            return false;
         }
     }
 
     // download contents associated with the post
-    public async download() {
+    public async download(): Promise<boolean> {
         try {
             // image
-            if (this.post_hint !== 'hosted:video') return void (await this.downloadFile(this.url, this.name));
+            if (this.post_hint !== 'hosted:video') return await this.downloadFile(this.url, this.name);
             // video
-            await this.downloadFile(this.url, this.name + 'video');
-            await this.downloadFile(this.getAudioUrl(), this.name + 'audio');
-            await this.prepareVideo();
+            if (
+                !(
+                    (await this.downloadFile(this.url, this.name + 'video')) &&
+                    (await this.downloadFile(this.getAudioUrl(), this.name + 'audio')) &&
+                    (await this.prepareVideo())
+                )
+            ) {
+                console.log('HERE');
+                return false;
+            }
             // wait and remove unnecessary files
             await sleep(1000);
             fs.unlinkSync(path.join('public', `${this.name}video.mp4`));
             fs.unlinkSync(path.join('public', `${this.name}audio.mp4`));
+            return true;
         } catch (error) {
             console.error(`[error] Failed to download ${this.name}\n`, error);
+            return false;
         }
     }
 
     // concat the video and audio, resize, create cover image
-    protected async prepareVideo(): Promise<void> {
+    protected async prepareVideo(): Promise<boolean> {
         return new Promise((res) => {
-            if (!this.bitrate_kbps) return void res();
-            ffmpeg()
-                .input(path.join('public', `${this.name}video.mp4`))
-                .size('720x720') // 1:1 ratio
-                .autopad(true, 'black') // create a black padding around the video
-                .videoBitrate(clamp(this.bitrate_kbps, 2000, 4000) + 'k') // 3500 is recommended
-                .input(path.join('public', `${this.name}audio.mp4`))
-                .audioCodec('aac')
-                .audioBitrate('256k')
-                .output(path.join('public', `${this.name}.mp4`))
-                // create a cover image too
-                .takeScreenshots({
-                    count: 1,
-                    timemarks: ['0.0'],
-                    filename: path.join('public', `${this.name}cover.png`),
-                })
-                .on('progress', (p) => console.log(`[info] Converting ${this.name}: ${Math.floor(p.percent)}%`))
-                .once('end', res)
-                .run();
+            if (!this.bitrate_kbps) return false;
+            try {
+                ffmpeg()
+                    .input(path.join('public', `${this.name}video.mp4`))
+                    .size('720x720') // 1:1 ratio
+                    .autopad(true, 'black') // create a black padding around the video
+                    .videoBitrate(clamp(this.bitrate_kbps, 2000, 4000) + 'k') // 3500 is recommended
+                    .input(path.join('public', `${this.name}audio.mp4`))
+                    .audioCodec('aac')
+                    .audioBitrate('256k')
+                    .output(path.join('public', `${this.name}.mp4`))
+                    // create a cover image too
+                    .takeScreenshots({
+                        count: 1,
+                        timemarks: ['0.0'],
+                        filename: path.join('public', `${this.name}cover.png`),
+                    })
+                    .on('progress', (p) => console.log(`[info] Converting ${this.name}: ${Math.floor(p.percent)}%`))
+                    .once('end', () => res(true))
+                    .run();
+            } catch (error) {
+                console.log(`[error] Failed to convert ${this.name}\n`, error);
+                return res(false);
+            }
         });
     }
 
