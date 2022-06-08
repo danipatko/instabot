@@ -115,7 +115,7 @@ export class IGAccount {
     private totalFollows: number = 0;
     private follows: number = 0;
 
-    private loginTime: number = Date.now(); // the time the account was last logged in
+    private loginTime: number = 0; // the time the account was last logged in
     private followersFeed?: AccountFollowersFeed;
     private peopleToFollow: number[] = [];
 

@@ -8,17 +8,10 @@ interface Row {
 export default class Table<T extends Row> {
     protected name: string;
 
-    public constructor(
-        name: string,
-        properties: Record<keyof T, string>,
-        drop?: boolean
-    ) {
+    public constructor(name: string, properties: Record<keyof T, string>, drop?: boolean) {
         this.name = name;
         // clear table
-        if (drop)
-            run('DROP TABLE IF EXISTS ' + name).then(() =>
-                this.create(properties)
-            );
+        if (drop) run('DROP TABLE IF EXISTS ' + name).then(() => this.create(properties));
         else this.create(properties);
     }
 
@@ -32,17 +25,13 @@ export default class Table<T extends Row> {
                 .map(([field, type]) => field + ' ' + type)
                 .join(', ') +
             ')';
-        if (!(await run(table)))
-            console.error(`[error] Failed to create table '${this.name}'`);
+        if (!(await run(table))) console.error(`[error] Failed to create table '${this.name}'`);
     }
 
     // instert a new row
     public async insert(data: T) {
         const items = Object.entries(data).filter(
-            ([k, v]) =>
-                typeof v == 'number' ||
-                typeof v == 'string' ||
-                typeof v == 'boolean'
+            ([k, v]) => typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean'
         );
 
         const insert =
@@ -61,19 +50,11 @@ export default class Table<T extends Row> {
     public async update(data: T) {
         const { id, ...rest } = data;
         const items = Object.entries(rest).filter(
-            ([k, v]) =>
-                k != id &&
-                (typeof v == 'number' ||
-                    typeof v == 'string' ||
-                    typeof v == 'boolean')
+            ([k, v]) => k != id && (typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean')
         );
 
-        const update =
-            'UPDATE ' +
-            this.name +
-            ' SET ' +
-            items.map((x) => x[0] + '=?').join(',') +
-            ' WHERE id = ?';
+        const update = 'UPDATE ' + this.name + ' SET ' + items.map((x) => x[0] + '=?').join(',') + ' WHERE id = ?';
+        console.log(update);
         if (!(await run(update, ...items.map((x) => x[1]), id)))
             console.error(`[error] Failed to update table '${this.name}'`);
     }

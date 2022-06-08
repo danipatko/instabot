@@ -7,6 +7,7 @@ export default class QueryBuilder<T extends Row> {
     protected q: string[] = [];
     protected table: string = '';
     protected fields: (keyof T)[] = [];
+    protected _limit: number = 0;
 
     public static select<T extends Row>(...fields: (keyof T)[]): QueryBuilder<T> {
         const q = new QueryBuilder<T>();
@@ -44,6 +45,11 @@ export default class QueryBuilder<T extends Row> {
         return this;
     }
 
+    public limit(n: number): QueryBuilder<T> {
+        this._limit = n;
+        return this;
+    }
+
     public get query(): string {
         let result: string[] = ['SELECT'];
         if (this.fields.length > 0) result.push(this.fields.join(','));
@@ -51,6 +57,7 @@ export default class QueryBuilder<T extends Row> {
 
         result.push('FROM', this.table);
         if (this.q.length > 0) result.push('WHERE', ...this.q);
+        if (this._limit > 0) result.push('LIMIT', this._limit.toString());
         return result.join(' ');
     }
 }

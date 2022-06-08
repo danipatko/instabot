@@ -4,15 +4,23 @@ import AccessKeys from '../lib/accesskeys';
 import { Response, Request, NextFunction } from 'express';
 import { IGAccount } from '../lib/insta/account';
 
+// IGAccount._instance.enable();
+
 export const authOwner = async (req: Request, res: Response, next: NextFunction) => {
     const { token } = req.cookies;
     if (!token || !(await AccessKeys.isOwner(getKey(token)))) return void res.redirect('/login');
     next();
 };
 
+const allDefined = (...args: any[]) => args.every((arg) => arg !== undefined);
+
 export const getAccess = async (req: Request, res: Response) => {
     const keys = await AccessKeys.getKeys();
     const accounts = await IGAccount.getAll();
+
+    console.log(IGAccount._instance);
+    console.log(IGAccount._instance.progress);
+
     res.render('access', { keys, accounts });
 };
 
@@ -48,16 +56,18 @@ export const updateAccount = async (req: Request, res: Response) => {
     if (!id) return void res.sendStatus(400);
 
     const { post_target, follow_target, follow_base, timespan } = req.body;
-    if (!(post_target && follow_target && follow_base && timespan)) return void res.sendStatus(400);
+    console.log(post_target, follow_target, follow_base, timespan);
+    if (!allDefined(post_target, follow_target, follow_base, timespan)) return void res.sendStatus(400);
 
     const account = await IGAccount.fetch(id);
     if (!account) return void res.sendStatus(404);
 
-    account.timespan = timespan;
-    account.post_target = post_target;
+    account.timespan = parseInt(timespan, 10);
+    account.post_target = parseInt(post_target, 10);
     account.follow_base = follow_base;
-    account.follow_target = follow_target;
+    account.follow_target = parseInt(follow_target, 10);
 
+    console.log(account);
     await IGAccount.update(account);
 
     res.redirect('/access');

@@ -62,20 +62,38 @@
                             <form action="/account/<%= a.id %>/update" method="post">
                                 <div>
                                     <label for="follow_target">Follow target</label>
-                                    <input name="follow_target" type="number" value="0" min="0" max="400" />
+                                    <input
+                                        name="follow_target"
+                                        type="number"
+                                        value="<%= a.follow_target %>"
+                                        min="0"
+                                        max="400"
+                                    />
                                 </div>
                                 <div>
                                     <label for="post_target">Post target</label>
-                                    <input name="post_target" type="number" value="0" min="0" max="400" />
+                                    <input
+                                        name="post_target"
+                                        type="number"
+                                        value="<%= a.post_target %>"
+                                        min="0"
+                                        max="400"
+                                    />
                                 </div>
                                 <div>
                                     <label for="timespan">Timespan (hours)</label>
-                                    <input name="timespan" type="number" value="24" min="1" max="1000" />
+                                    <input name="timespan" type="number" value="<%= a.timespan %>" min="1" max="1000" />
                                 </div>
                                 <div>
                                     <label for="follow_base">This account's followers will be followed</label>
-                                    <input name="follow_base" type="text" placeholder="Follow base @" />
+                                    <input
+                                        name="follow_base"
+                                        type="text"
+                                        value="<%= a.follow_base %>"
+                                        placeholder="Follow base @"
+                                    />
                                 </div>
+                                <button type="submit">Save</button>
                             </form>
                         </div>
                     </li>

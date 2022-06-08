@@ -201,9 +201,9 @@ export default class RedditPost implements IRedditPost {
 
     // filter
     public static get = async (query: QB<IRedditPost>) => await redditPostTable.get(query);
-    // get unaccepted posts
+    // get unaccepted posts (10 at a time)
     public static pending = async () =>
-        await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0));
+        await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).limit(10));
 
     public update = async () => await redditPostTable.update(this);
 
@@ -266,17 +266,18 @@ export default class RedditPost implements IRedditPost {
                     (await this.prepareVideo())
                 )
             ) {
-                console.log('HERE');
+                console.error(`[error] Failed to download ${this.name}`);
                 return false;
             }
             // wait and remove unnecessary files
             await sleep(1000);
             fs.unlinkSync(path.join('public', `${this.name}video.mp4`));
+            await sleep(1000);
             fs.unlinkSync(path.join('public', `${this.name}audio.mp4`));
             return true;
         } catch (error) {
-            console.error(`[error] Failed to download ${this.name}\n`, error);
-            return false;
+            console.error(`[error] Failed to remove extra files of ${this.name}\n`, error);
+            return true;
         }
     }
 
