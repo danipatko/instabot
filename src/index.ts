@@ -13,6 +13,7 @@ import {
     removeAccount,
     removeKey,
     toggleAccount,
+    toggleActivity,
     toggleKey,
     updateAccount,
 } from './pages/access';
@@ -62,6 +63,7 @@ app.post('/access/:id/toggle', authOwner, toggleKey);
 app.post('/access/:id/remove', authOwner, removeKey);
 
 app.post('/account/new', authOwner, addAccount);
+app.post('/activity/toggle', authOwner, toggleActivity);
 app.post('/account/:id/toggle', authOwner, toggleAccount);
 app.post('/account/:id/remove', authOwner, removeAccount);
 app.post('/account/:id/update', authOwner, updateAccount);

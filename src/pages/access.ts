@@ -18,10 +18,14 @@ export const getAccess = async (req: Request, res: Response) => {
     const keys = await AccessKeys.getKeys();
     const accounts = await IGAccount.getAll();
 
-    console.log(IGAccount._instance);
-    console.log(IGAccount._instance.progress);
+    res.render('access', { keys, accounts, activity: { enabled: IGAccount._instance.enabled, progress: IGAccount._instance.progress, account: IGAccount._instance.current } });
+};
 
-    res.render('access', { keys, accounts });
+export const toggleActivity = async (req: Request, res: Response) => {
+    if (IGAccount._instance.enabled) IGAccount._instance.disable();
+    else IGAccount._instance.enable();
+
+    res.redirect('/access');
 };
 
 export const addAccount = async (req: Request, res: Response) => {
@@ -62,7 +66,7 @@ export const updateAccount = async (req: Request, res: Response) => {
     const account = await IGAccount.fetch(id);
     if (!account) return void res.sendStatus(404);
 
-    account.timespan = parseInt(timespan, 10);
+    account.timespan = parseFloat(timespan);
     account.post_target = parseInt(post_target, 10);
     account.follow_base = follow_base;
     account.follow_target = parseInt(follow_target, 10);

@@ -6,7 +6,8 @@ import { clamp, randStr, rng, sleep } from '../util';
 import RedditPost from '../reddit/post';
 import path from 'path/posix';
 
-const RATE_LIMIT = 400;
+// actions in 24 hours
+const RATE_LIMIT = 6000;
 
 // one and only client
 export const ig = new IgApiClient();
@@ -31,7 +32,7 @@ const instaAccounts = new Table<InstaAccount>(
     {
         id: 'VARCHAR(20) UNIQUE',
         active: 'BOOLEAN',
-        timespan: 'INTEGER',
+        timespan: 'FLOAT',
         password: 'VARCHAR(100)',
         username: 'VARCHAR(100)',
         post_target: 'INTEGER',
@@ -58,19 +59,18 @@ export class IGAccount {
         return await instaAccounts.get(QueryBuilder.select<InstaAccount>().from('igaccount'));
     }
 
+    // get accounts with passwords
+    public static async getActive(): Promise<InstaAccount[]> {
+        return await instaAccounts.get(QueryBuilder.select<InstaAccount>().from('igaccount').where('active').is(1));
+    }
+
     public static async update(data: InstaAccount) {
         return await instaAccounts.update(data);
     }
 
     public static fetch = async (id: string) => await instaAccounts.fetch(id);
 
-    public static async addAccount(
-        username: string,
-        password: string,
-        timespan: number,
-        post_target: number,
-        follow_target: number
-    ) {
+    public static async addAccount(username: string, password: string, timespan: number, post_target: number, follow_target: number) {
         const id = randStr(20);
         await instaAccounts.insert({
             id,
@@ -83,23 +83,27 @@ export class IGAccount {
             follow_target,
             unfollow_target: 0,
         });
-        this._instance.enableAccount(id);
+        IGAccount._instance.enableAccount(id);
     }
 
     public static async removeAccount(id: string) {
         await instaAccounts.remove(id);
-        this._instance.disableAccount(id);
+        IGAccount._instance.disableAccount(id);
     }
 
     private constructor() {
         this.refreshAccounts();
     }
 
-    public async reset() {
+    public reset() {
+        this.posts = 0;
         this.actions = 0;
         this.current = null;
+        this.follows = 0;
+        this.timespan = 0;
         this.loginTime = 0;
-        this.accountCycle = [];
+        this.totalPosts = 0;
+        this.totalFollows = 0;
         this.followersFeed = undefined;
         this.peopleToFollow = [];
     }
@@ -115,14 +119,16 @@ export class IGAccount {
     private totalFollows: number = 0;
     private follows: number = 0;
 
+    private timespan: number = 0;
     private loginTime: number = 0; // the time the account was last logged in
     private followersFeed?: AccountFollowersFeed;
     private peopleToFollow: number[] = [];
 
     private accountCycle: string[] = [];
 
-    protected postInterval: NodeJS.Timeout | null = null;
-    protected followInterval: NodeJS.Timeout | null = null;
+    protected postInterval: NodeJS.Timer | null = null;
+    protected followInterval: NodeJS.Timer | null = null;
+    protected activityTimeout: NodeJS.Timeout | null = null;
 
     public get elapsedTime(): number {
         return Date.now() - this.loginTime;
@@ -133,6 +139,8 @@ export class IGAccount {
             posts: this.posts,
             follows: this.follows,
             actions: this.actions,
+            accounts: this.accountCycle,
+            totalTime: this.timespan,
             loginTime: this.loginTime,
             totalPosts: this.totalPosts,
             elapsedTime: this.elapsedTime,
@@ -158,8 +166,8 @@ export class IGAccount {
     // log out of current account
     public static async logout() {
         // const { status } = await ig.account.logout();
-        // console.log(`[info] logged out of account ${this._instance.current?.username}\n${status}`);
-        this._instance.current = null;
+        // console.log(`[info] logged out of account ${IGAccount._instance.current?.username}\n${status}`);
+        IGAccount._instance.current = null;
     }
 
     // publish a photo
@@ -204,18 +212,25 @@ export class IGAccount {
 
     // follow a person
     private async followNext() {
+        this.actions++;
         // if(this.actions)
+        console.log(`FOLLOWING ${new Date().toISOString()}`);
         await this.checkToFollow();
         const user = this.peopleToFollow.pop();
         user && (await this.follow(user));
+        this.follows++;
     }
 
     // create a post
     private async postNext() {
+        console.log(`POSTING ${new Date().toISOString()}`);
         const post = await RedditPost.nextUploadable();
         if (!post) return;
+
+        this.actions++;
         if (post.post_hint === 'image') await this.publishPhoto(post.file, post.title);
         else await this.publishVideo(post.title, post.file, post.cover);
+        this.posts++;
 
         console.log(`[info] Posted '${post.title}'`);
         post.uploaded = true;
@@ -233,13 +248,13 @@ export class IGAccount {
     }
 
     private async refreshAccounts() {
-        this.accountCycle = (await IGAccount.getAll()).map((a) => a.id);
+        this.accountCycle = (await IGAccount.getActive()).map((a) => a.id);
     }
 
     // remove an account from the cycle
     public async disableAccount(id: string) {
-        this.accountCycle = this.accountCycle.filter((a) => a != id);
-        if (this.current?.id == id) await IGAccount.nextAccount();
+        this.accountCycle = this.accountCycle.filter((x) => x !== id);
+        if (this.current?.id == id) this.nextAccount();
     }
 
     // add an account to the cycle
@@ -248,59 +263,85 @@ export class IGAccount {
     }
 
     // log into the next acount in the cycle
-    public static async nextAccount() {
-        const id = this._instance.accountCycle.shift();
-        if (!id) return;
-        this._instance.accountCycle.push(id);
-        this._instance.current = await instaAccounts.fetch(id);
+    public async nextAccount() {
+        console.log(`[info] Logging into next account`);
+        this.reset();
 
-        // await this.logout();
+        const id = this.accountCycle.shift();
+        if (!id) return void console.error('[error] No accounts available.');
+        this.accountCycle.push(id);
+
+        // there is only one account -> don't log out and log back in
+        if (this.current?.id == id) return void console.log('[info] Already logged into account. Passing login.');
+
+        await IGAccount.logout();
         // await sleep(rng(10_000, 20_000));
-        // await this.login(id);
+        await IGAccount.login(id);
     }
 
     // start posting and following
     private async startActivity() {
-        while (!this.current) {
-            await this.refreshAccounts();
-            await IGAccount.nextAccount();
+        await this.refreshAccounts();
+        // no active accounts in cycle
+        if (!this.accountCycle.length) {
+            this.enabled = false;
+            return void console.error('[error] No active accounts.');
         }
+
+        // if there is no current account, log into the first one
+        if (this.current) this.current = await instaAccounts.fetch(this.current.id);
+        else await this.nextAccount();
+
+        // no active account
+        if (!this.current) {
+            this.enabled = false;
+            return void console.error('[error] No current account.');
+        }
+
+        console.log('---- GOT HERE ----');
+
         // the loop has been restarted
-        const timespan =
+        this.timespan =
             this.actions != 0 // has been already started
                 ? this.current.timespan * 60 * 60 * 1000 - this.elapsedTime
                 : this.current.timespan * 60 * 60 * 1000;
 
-        this.maxActions = this.current.timespan * (RATE_LIMIT / 24);
-        // priorize posting over following
+        // number of actions that can be done under this timespan
+        this.maxActions = Math.floor(this.current.timespan * (RATE_LIMIT / 24));
+
+        // number of posts
         this.totalPosts = clamp(this.current.post_target, 0, this.maxActions) - this.posts;
-        const postRate = this.totalPosts / timespan;
+        if (this.totalPosts > 0)
+            this.postInterval = setInterval(async () => {
+                if (this.posts >= this.totalPosts && this.postInterval) return void clearInterval(this.postInterval);
+                await this.postNext();
+            }, this.timespan / (this.totalPosts + 1));
 
-        this.totalFollows =
-            clamp(
-                this.current.follow_target,
-                0,
-                Math.min(this.maxActions - this.totalPosts, this.current.follow_target)
-            ) - this.follows;
-        const followRate = this.totalFollows / timespan;
+        // posts are prioritized over following
+        this.totalFollows = clamp(this.current.follow_target, 0, Math.min(this.maxActions - this.totalPosts, this.current.follow_target)) - this.follows;
+        if (this.totalFollows > 0)
+            this.followInterval = setInterval(async () => {
+                if (this.follows >= this.totalFollows && this.followInterval) return void clearInterval(this.followInterval);
+                await this.followNext();
+            }, this.timespan / (this.totalFollows + 1));
 
-        this.postInterval = setInterval(
-            /* this.postNext*/ () => {
-                console.log('POSTING');
-            },
-            postRate
+        console.log(
+            '[info]',
+            `${this.current.username} will be active for ${this.timespan / 1000 / 60 / 60} hours.\nMax actions: ${this.maxActions}\nPosts: ${this.totalPosts}\nFollows: ${this.totalFollows}`
         );
-        this.followInterval = setInterval(
-            /*this.followNext*/ () => {
-                console.log('FOLLOWING');
-            },
-            followRate
-        );
+
+        // start a timeout
+        this.activityTimeout = setTimeout(async () => {
+            this.stopActivity();
+            await this.nextAccount();
+            await this.startActivity();
+        }, this.timespan);
     }
 
     private stopActivity() {
         this.postInterval && clearInterval(this.postInterval);
         this.followInterval && clearInterval(this.followInterval);
+        this.activityTimeout && clearTimeout(this.activityTimeout);
     }
 
     public async enable() {

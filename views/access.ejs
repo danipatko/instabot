@@ -62,36 +62,19 @@
                             <form action="/account/<%= a.id %>/update" method="post">
                                 <div>
                                     <label for="follow_target">Follow target</label>
-                                    <input
-                                        name="follow_target"
-                                        type="number"
-                                        value="<%= a.follow_target %>"
-                                        min="0"
-                                        max="400"
-                                    />
+                                    <input name="follow_target" type="number" value="<%= a.follow_target %>" min="0" max="400" />
                                 </div>
                                 <div>
                                     <label for="post_target">Post target</label>
-                                    <input
-                                        name="post_target"
-                                        type="number"
-                                        value="<%= a.post_target %>"
-                                        min="0"
-                                        max="400"
-                                    />
+                                    <input name="post_target" type="number" value="<%= a.post_target %>" min="0" max="400" />
                                 </div>
                                 <div>
                                     <label for="timespan">Timespan (hours)</label>
-                                    <input name="timespan" type="number" value="<%= a.timespan %>" min="1" max="1000" />
+                                    <input step="0.01" name="timespan" type="number" value="<%= a.timespan %>" min="0,001" max="1000" />
                                 </div>
                                 <div>
                                     <label for="follow_base">This account's followers will be followed</label>
-                                    <input
-                                        name="follow_base"
-                                        type="text"
-                                        value="<%= a.follow_base %>"
-                                        placeholder="Follow base @"
-                                    />
+                                    <input name="follow_base" type="text" value="<%= a.follow_base %>" placeholder="Follow base @" />
                                 </div>
                                 <button type="submit">Save</button>
                             </form>
@@ -119,11 +102,26 @@
                             </li>
                             <li>
                                 <label for="timespan">Timespan (hours)</label>
-                                <input name="timespan" type="number" value="24" min="1" />
+                                <input step="0.01" name="timespan" type="number" value="24" min="0.01" />
                             </li>
                         </ul>
                         <button type="submit">Add</button>
                     </form>
+                </div>
+                <div>
+                    <h1>Account activity</h1>
+                    <form action="/activity/toggle" method="post">
+                        <button type="submit"><%= activity.enabled ? 'disable' : 'enable' %></button>
+                    </form>
+                    <ul>
+                        <li>Current account: <%= activity.account?.username ?? 'N/A' %></li>
+                        <li>Posts: <%= activity.progress.posts %>/<%= activity.progress.totalPosts %></li>
+                        <li>Follows: <%= activity.progress.follows %>/<%= activity.progress.totalFollows %></li>
+                        <li>
+                            Elapsed time: <%= activity.enabled ? Math.floor(activity.progress.elapsedTime / 1000 / 60) + 'm/' + Math.floor(activity.progress.totalTime / 1000 / 60) + 'm' : 'N/A' %>
+                        </li>
+                        <li>Account queue: <%= activity.progress.accounts.map((id) => accounts.find((a) => a.id == id)?.username ?? x).join(', ') %></li>
+                    </ul>
                 </div>
             </article>
         </main>
