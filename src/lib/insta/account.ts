@@ -1,13 +1,14 @@
 import Table from '../db/table';
 import { readFileSync } from 'fs';
 import QueryBuilder from '../db/builder';
-import { AccountFollowersFeed, IgApiClient } from 'instagram-private-api';
+import { AccountFollowersFeed, AccountFollowersFeedResponseUsersItem, IgApiClient, IgCheckpointError } from 'instagram-private-api';
 import { clamp, randStr, rng, sleep } from '../util';
 import RedditPost from '../reddit/post';
 import path from 'path/posix';
+import Bluebird from 'bluebird';
 
 // actions in 24 hours
-const RATE_LIMIT = 6000;
+const RATE_LIMIT = 400;
 
 // one and only client
 export const ig = new IgApiClient();
@@ -149,61 +150,76 @@ export class IGAccount {
     }
 
     // log into instagram
-    public static async login(id: string) {
+    public static async login(id: string): Promise<boolean> {
         const account = await instaAccounts.fetch(id);
-        if (!account) return void console.error(`[error] account '${id}' not found`);
+        if (!account) {
+            console.error(`[error] account '${id}' not found`);
+            return false;
+        }
+
         this.instance.current = account;
         this.instance.loginTime = Date.now();
-        // try {
-        //     await ig.simulate.preLoginFlow();
-        //     await ig.account.login(account.username, account.password);
-        //     process.nextTick(async () => await ig.simulate.postLoginFlow());
-        // } catch (error) {
-        //     console.error(`[error] Failed to log into account '${account.username}'`, error);
-        // }
+        ig.state.generateDevice(account.username);
+
+        return new Promise<boolean>(async (res) => {
+            Bluebird.try(async () => {
+                const auth = await ig.account.login(account.username, account.password);
+                console.log(auth); // DEBUG
+                await sleep(3000);
+                res(true);
+            })
+                .catch(IgCheckpointError, async () => {
+                    console.log(ig.state.checkpoint); // Checkpoint info here
+                    await ig.challenge.auto(true); // Requesting sms-code or click "It was me" button
+                    console.log(ig.state.checkpoint); // Challenge info here
+                    res(false);
+                })
+                .catch((e) => {
+                    console.error('[error] Could not resolve checkpoint:', e, e.stack);
+                    res(false);
+                });
+        });
     }
 
     // log out of current account
     public static async logout() {
-        // const { status } = await ig.account.logout();
-        // console.log(`[info] logged out of account ${IGAccount._instance.current?.username}\n${status}`);
-        IGAccount._instance.current = null;
+        await ig.account.logout();
+        console.log(`[info] logged out of account '${this.instance.current?.username ?? 'unknown'}'`);
+        this._instance.reset();
     }
 
     // publish a photo
     private async publishPhoto(file: string, caption: string): Promise<string | null> {
-        // try {
-        //     const buffer = Buffer.from(readFileSync(file));
-        //     const res = await ig.publish.photo({
-        //         file: buffer,
-        //         caption,
-        //     });
-        //     console.log(`[info] Published photo '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
-        //     return res.media.id;
-        // } catch (error) {
-        //     console.error(`[error] Failed to publish photo '${file}'`, error);
-        //     return null;
-        // }
-        return null;
+        try {
+            const buffer = Buffer.from(readFileSync(file));
+            const res = await ig.publish.photo({
+                file: buffer,
+                caption,
+            });
+            console.log(`[info] Published photo\n`, res);
+            return res?.media?.id ?? 'unknown';
+        } catch (error) {
+            console.error(`[error] Failed to publish photo '${file}'`, error);
+            return null;
+        }
     }
 
     // upload a video
     private async publishVideo(caption: string, file: string, cover: string): Promise<string | null> {
-        // try {
-        //     const videoBuf = Buffer.from(readFileSync(file));
-        //     const coverBuf = Buffer.from(readFileSync(cover));
-        //     const res = await ig.publish.video({
-        //         video: videoBuf,
-        //         caption,
-        //         coverImage: coverBuf,
-        //     });
-        //     console.log(`[info] Published video '${res?.media.caption}'\nStatus: ${res.status}\nMedia id: ${res?.media.id} | Upload id: ${res.upload_id}`);
-        //     return res.media.id;
-        // } catch (error) {
-        //     console.error(`[error] Failed to publish video '${file}'`, error);
-        //     return null;
-        // }
-        return null;
+        try {
+            const videoBuf = Buffer.from(readFileSync(file));
+            const coverBuf = Buffer.from(readFileSync(cover));
+            const res = await ig.publish.video({
+                video: videoBuf,
+                caption,
+                coverImage: coverBuf,
+            });
+            console.log(`[info] Published video '${file}'\n`, res);
+            return res?.media?.id ?? 'unknown';
+        } catch (error) {
+            console.error(`[error] Failed to publish video '${file}'`, error);
+            return null;
+        }
     }
 
     private follow = async (id: string | number) => console.log('FOLLOW ', id) /* await ig.friendship.create(id)*/;
@@ -213,23 +229,27 @@ export class IGAccount {
     // follow a person
     private async followNext() {
         this.actions++;
-        // if(this.actions)
-        console.log(`FOLLOWING ${new Date().toISOString()}`);
+        console.log(`FOLLOWING ${new Date().toLocaleString()}`);
+
         await this.checkToFollow();
         const user = this.peopleToFollow.pop();
+        console.log('Attempting to follow ', user);
         user && (await this.follow(user));
         this.follows++;
     }
 
     // create a post
     private async postNext() {
-        console.log(`POSTING ${new Date().toISOString()}`);
+        console.log(`POSTING ${new Date().toLocaleString()}`);
+
         const post = await RedditPost.nextUploadable();
         if (!post) return;
 
         this.actions++;
-        if (post.post_hint === 'image') await this.publishPhoto(post.file, post.title);
-        else await this.publishVideo(post.title, post.file, post.cover);
+        const caption = RedditPost.defaultCaption(post.title, post.author, post.url);
+
+        if (post.post_hint === 'image') await this.publishPhoto(post.file, post.caption.length ? post.caption : caption);
+        else await this.publishVideo(post.title, post.file, post.caption.length ? post.caption : caption);
         this.posts++;
 
         console.log(`[info] Posted '${post.title}'`);
@@ -240,11 +260,25 @@ export class IGAccount {
     private async checkToFollow() {
         // get the follower feed of an account by username
         if (!this.followersFeed) {
-            // const id = await ig.user.getIdByUsername(this.current?.follow_base ?? 'instagram'); // default: people following instagram
-            // this.followersFeed = ig.feed.accountFollowers(id);
+            const id = await ig.user.getIdByUsername(this.current?.follow_base ?? 'instagram'); // default: people following @instagram
+            console.log(`[info] Getting followers feed of '${id}'`);
+            this.followersFeed = ig.feed.accountFollowers(id);
+            console.log(this.followersFeed);
         }
         // if there are no people to follow, add more
-        // if (this.peopleToFollow.length == 0 && this.followersFeed.isMoreAvailable()) for (const item of await this.followersFeed.items()) this.peopleToFollow.unshift(item.pk);
+        console.log(this.peopleToFollow);
+
+        if (this.peopleToFollow.length > 0) return;
+
+        let currentPage: AccountFollowersFeedResponseUsersItem[] = [];
+        const maxPages = 2;
+        let i = 0;
+        do {
+            currentPage = await this.followersFeed.items();
+            console.log(currentPage);
+            this.peopleToFollow = [...this.peopleToFollow, ...currentPage.map((u) => u.pk)];
+            await sleep(rng(2000, 5000));
+        } while (i++ < maxPages && this.followersFeed.isMoreAvailable());
     }
 
     private async refreshAccounts() {
@@ -254,12 +288,21 @@ export class IGAccount {
     // remove an account from the cycle
     public async disableAccount(id: string) {
         this.accountCycle = this.accountCycle.filter((x) => x !== id);
-        if (this.current?.id == id) this.nextAccount();
+        if (this.enabled && this.current?.id == id) this.restart();
+    }
+
+    public async restart() {
+        this.stopActivity();
+        await this.nextAccount();
+        await this.startActivity();
     }
 
     // add an account to the cycle
     public enableAccount(id: string) {
         this.accountCycle.push(id);
+        if (!this.enabled) return;
+        this.stopActivity();
+        this.startActivity();
     }
 
     // log into the next acount in the cycle
@@ -275,13 +318,14 @@ export class IGAccount {
         if (this.current?.id == id) return void console.log('[info] Already logged into account. Passing login.');
 
         await IGAccount.logout();
-        // await sleep(rng(10_000, 20_000));
-        await IGAccount.login(id);
+        if (!(await IGAccount.login(id))) {
+            this.disable();
+            console.error(`[error] Could not log into account '${id}'`);
+        }
     }
 
     // start posting and following
     private async startActivity() {
-        await this.refreshAccounts();
         // no active accounts in cycle
         if (!this.accountCycle.length) {
             this.enabled = false;
@@ -297,8 +341,6 @@ export class IGAccount {
             this.enabled = false;
             return void console.error('[error] No current account.');
         }
-
-        console.log('---- GOT HERE ----');
 
         // the loop has been restarted
         this.timespan =

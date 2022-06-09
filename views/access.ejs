@@ -76,8 +76,14 @@
                                     <label for="follow_base">This account's followers will be followed</label>
                                     <input name="follow_base" type="text" value="<%= a.follow_base %>" placeholder="Follow base @" />
                                 </div>
-                                <button type="submit">Save</button>
+                                <button type="submit">save</button>
                             </form>
+
+                            <div>
+                                <form action="/account/<%= a.id %>/remove" method="post">
+                                    <button type="submit">remove</button>
+                                </form>
+                            </div>
                         </div>
                     </li>
                     <% }) %>
@@ -118,7 +124,7 @@
                         <li>Posts: <%= activity.progress.posts %>/<%= activity.progress.totalPosts %></li>
                         <li>Follows: <%= activity.progress.follows %>/<%= activity.progress.totalFollows %></li>
                         <li>
-                            Elapsed time: <%= activity.enabled ? Math.floor(activity.progress.elapsedTime / 1000 / 60) + 'm/' + Math.floor(activity.progress.totalTime / 1000 / 60) + 'm' : 'N/A' %>
+                            Elapsed time: <%= activity.enabled ? Math.round(activity.progress.elapsedTime / 1000 / 60) + 'm/' + Math.round(activity.progress.totalTime / 1000 / 60) + 'm' : 'N/A' %>
                         </li>
                         <li>Account queue: <%= activity.progress.accounts.map((id) => accounts.find((a) => a.id == id)?.username ?? x).join(', ') %></li>
                     </ul>

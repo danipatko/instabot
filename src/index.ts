@@ -5,22 +5,11 @@ import RedditPost from './lib/reddit/post';
 import { IGAccount } from './lib/insta/account';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
-import {
-    addAccount,
-    addKey,
-    authOwner,
-    getAccess,
-    removeAccount,
-    removeKey,
-    toggleAccount,
-    toggleActivity,
-    toggleKey,
-    updateAccount,
-} from './pages/access';
+import { addAccount, addKey, authOwner, getAccess, removeAccount, removeKey, toggleAccount, toggleActivity, toggleKey, updateAccount } from './pages/access';
 import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
 import { approvePost } from './pages';
 
-// KEY: 5faf5ca381aa83509c4b
+// KEY: 7f6bbc3197c45f733636
 
 dotenv.config();
 
@@ -42,13 +31,6 @@ app.use('/public', express.static('public'));
 app.set('view engine', 'ejs');
 
 app.get('/', auth, async (req, res) => {
-    // const q = await RedditQuery.fetch('998f7c81b7cb0f763249');
-    // if (!q) return;
-
-    // const posts = await RedditFetch.fetchAll(q);
-    // const p = posts.filter(async (p) => p.post_hint === 'hosted:video')[0];
-    // await p.save();
-
     const pending = await RedditPost.pending();
     // console.log(pending);
     res.render('index', { foo: new Date().toLocaleTimeString(), pending, accounts: await IGAccount.getDisplay() });

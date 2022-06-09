@@ -5,13 +5,9 @@ import fetch from 'node-fetch';
 import Table from '../db/table';
 import ffmpeg from 'fluent-ffmpeg';
 import { randStr, sleep } from '../util';
-import { get } from '../db';
+import { each, get } from '../db';
 
-ffmpeg.setFfmpegPath(
-    process.platform === 'win32'
-        ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe'
-        : 'ffmpeg'
-);
+ffmpeg.setFfmpegPath(process.platform === 'win32' ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe' : 'ffmpeg');
 
 export interface RedditVideo {
     width: number;
@@ -193,17 +189,15 @@ export default class RedditPost implements IRedditPost {
 
     // get next post to upload
     public static async nextUploadable(): Promise<null | RedditPost> {
-        const data = await get<IRedditPost>(
-            'SELECT * FROM redditpost WHERE accepted=1 AND uploaded=0 ORDER BY accepted_at ASC LIMIT 1'
-        );
+        const data = await get<IRedditPost>('SELECT * FROM redditpost WHERE accepted=true AND uploaded=false ORDER BY accepted_at ASC LIMIT 1');
+        console.log(data);
         return data ? new RedditPost(data) : null;
     }
 
     // filter
     public static get = async (query: QB<IRedditPost>) => await redditPostTable.get(query);
     // get unaccepted posts (10 at a time)
-    public static pending = async () =>
-        await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).limit(10));
+    public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).limit(10));
 
     public update = async () => await redditPostTable.update(this);
 
@@ -242,10 +236,7 @@ export default class RedditPost implements IRedditPost {
             return false;
         }
         try {
-            fs.writeFileSync(
-                path.join('public', `${id}.${RedditPost.getExtension(url)}`),
-                Buffer.from(await response.arrayBuffer())
-            );
+            fs.writeFileSync(path.join('public', `${id}.${RedditPost.getExtension(url)}`), Buffer.from(await response.arrayBuffer()));
             return true;
         } catch (error) {
             console.error(`[error] Failed to save image ${this.url}\n`, error);
@@ -259,13 +250,7 @@ export default class RedditPost implements IRedditPost {
             // image
             if (this.post_hint !== 'hosted:video') return await this.downloadFile(this.url, this.name);
             // video
-            if (
-                !(
-                    (await this.downloadFile(this.url, this.name + 'video')) &&
-                    (await this.downloadFile(this.getAudioUrl(), this.name + 'audio')) &&
-                    (await this.prepareVideo())
-                )
-            ) {
+            if (!((await this.downloadFile(this.url, this.name + 'video')) && (await this.downloadFile(this.getAudioUrl(), this.name + 'audio')) && (await this.prepareVideo()))) {
                 console.error(`[error] Failed to download ${this.name}`);
                 return false;
             }
