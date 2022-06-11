@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Content selector</title>
+        <title>Archived posts</title>
         <link rel="stylesheet" href="/public/global.css" />
     </head>
     <body>
@@ -17,7 +17,7 @@
         </nav>
         <main class="main">
             <div class="posts">
-                <% pending.forEach(function(p) { %>
+                <% waiting.forEach(function(p) { %>
                 <div class="post">
                     <div class="title">'<%= p.title %>'</div>
                     <div class="meta">by <%= p.author %> at <%= new Date(p.created_utc * 1000).toLocaleString() %></div>
@@ -41,22 +41,8 @@
                     <div class="meta"><img width="360" height="360" src="/<%= p.file %>" /></div>
                     <% } %>
                     <div>
-                        <form action="/approve/<%= p.id %>" method="post">
-                            <div class="meta">
-                                <label for="account">Choose account to upload from</label>
-                                <select name="account">
-                                    <% accounts.forEach(function(a) { %>
-                                    <option value="<%= a.id %>"><%= a.username %></option>
-                                    <% }); %>
-                                </select>
-                            </div>
-                            <div>
-                                <textarea spellcheck="false" name="caption" cols="60" rows="4"><%= p.caption %></textarea>
-                            </div>
-                            <div class="accept">
-                                <button class="ok" type="submit" value="1" name="accept">Accept</button>
-                                <button class="reject" type="submit" value="0" name="accept">Archive</button>
-                            </div>
+                        <form action="/waiting/<%= p.id %>/archive" method="post">
+                            <button class="reject" type="submit">Move to archives</button>
                         </form>
                     </div>
                 </div>

@@ -197,7 +197,16 @@ export default class RedditPost implements IRedditPost {
     // filter
     public static get = async (query: QB<IRedditPost>) => await redditPostTable.get(query);
     // get unaccepted posts (10 at a time)
-    public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).limit(10));
+    public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).and('accepted_at').is(0).limit(10));
+    // get accepted posts
+    public static waiting = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(1).limit(10));
+
+    // remove unaccepted archive posts
+    public static async purge(n: number) {
+        const posts = await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).and('accepted_at').not(0).limit(n));
+        console.log(posts);
+        for (const post of posts) await new RedditPost(post).remove();
+    }
 
     public update = async () => await redditPostTable.update(this);
 
@@ -314,6 +323,13 @@ export default class RedditPost implements IRedditPost {
         this.accepted_by = by;
         this.accepted_at = Date.now();
         this.caption = caption;
+        await this.update();
+    }
+
+    public async archive(by: string) {
+        this.accepted = false;
+        this.accepted_by = by;
+        this.accepted_at = Date.now();
         await this.update();
     }
 }

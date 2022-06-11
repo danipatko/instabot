@@ -1,14 +1,14 @@
-import Table from '../db/table';
-import { readFileSync } from 'fs';
-import QueryBuilder from '../db/builder';
-import { AccountFollowersFeed, AccountFollowersFeedResponseUsersItem, IgApiClient, IgCheckpointError } from 'instagram-private-api';
-import { clamp, randStr, rng, sleep } from '../util';
-import RedditPost from '../reddit/post';
 import path from 'path/posix';
+import Table from '../db/table';
 import Bluebird from 'bluebird';
+import { readFileSync } from 'fs';
+import RedditPost from '../reddit/post';
+import QueryBuilder from '../db/builder';
+import { clamp, randStr, rng, sleep } from '../util';
+import { AccountFollowersFeed, AccountFollowersFeedResponseUsersItem, IgApiClient, IgCheckpointError } from 'instagram-private-api';
 
 // actions in 24 hours
-const RATE_LIMIT = 400;
+const RATE_LIMIT = 2400;
 
 // one and only client
 export const ig = new IgApiClient();
@@ -16,7 +16,7 @@ export const ig = new IgApiClient();
 export interface IGActivity {
     timespan: number; // hours to be active
     post_target: number; // number of posts to publish
-    follow_base?: string; // id of an instagram account to follow its followers
+    follow_base: string; // id of an instagram account to follow its followers
     follow_target: number; // number of people to follow
     unfollow_target: number; // number of people to unfollow
 }
@@ -105,8 +105,12 @@ export class IGAccount {
         this.loginTime = 0;
         this.totalPosts = 0;
         this.totalFollows = 0;
-        this.followersFeed = undefined;
         this.peopleToFollow = [];
+    }
+
+    public reload() {
+        this.reset();
+        this.refreshAccounts();
     }
 
     public enabled: boolean = false;
@@ -122,7 +126,6 @@ export class IGAccount {
 
     private timespan: number = 0;
     private loginTime: number = 0; // the time the account was last logged in
-    private followersFeed?: AccountFollowersFeed;
     private peopleToFollow: number[] = [];
 
     private accountCycle: string[] = [];
@@ -161,6 +164,7 @@ export class IGAccount {
         this.instance.loginTime = Date.now();
         ig.state.generateDevice(account.username);
 
+        // TODO: clean up
         return new Promise<boolean>(async (res) => {
             Bluebird.try(async () => {
                 const auth = await ig.account.login(account.username, account.password);
@@ -222,7 +226,7 @@ export class IGAccount {
         }
     }
 
-    private follow = async (id: string | number) => console.log('FOLLOW ', id) /* await ig.friendship.create(id)*/;
+    private follow = async (id: string | number) => await ig.friendship.create(id);
 
     private unfollow = async (id: string | number) => await ig.friendship.destroy(id);
 
@@ -258,27 +262,29 @@ export class IGAccount {
     }
 
     private async checkToFollow() {
-        // get the follower feed of an account by username
-        if (!this.followersFeed) {
-            const id = await ig.user.getIdByUsername(this.current?.follow_base ?? 'instagram'); // default: people following @instagram
-            console.log(`[info] Getting followers feed of '${id}'`);
-            this.followersFeed = ig.feed.accountFollowers(id);
-            console.log(this.followersFeed);
-        }
-        // if there are no people to follow, add more
-        console.log(this.peopleToFollow);
+        // DEBUG
+        // this.peopleToFollow = [53250267036, 53464562100, 53438254943, 53607214137, 53598510785, 53833616120];
+        // return;
+        if (!this.current || this.current.follow_target < 1 || this.peopleToFollow.length > 0) return;
 
-        if (this.peopleToFollow.length > 0) return;
+        // check if id is the user pk
+        let id = parseInt(this.current.follow_base);
+        // id is a username
+        if (isNaN(id)) id = await ig.user.getIdByUsername(this.current.follow_base ?? 'instagram'); // default: people following @instagram
+        const followersFeed = ig.feed.accountFollowers(id);
 
         let currentPage: AccountFollowersFeedResponseUsersItem[] = [];
-        const maxPages = 2;
-        let i = 0;
         do {
-            currentPage = await this.followersFeed.items();
-            console.log(currentPage);
+            currentPage = await followersFeed.items();
             this.peopleToFollow = [...this.peopleToFollow, ...currentPage.map((u) => u.pk)];
+            // prevent api spam
             await sleep(rng(2000, 5000));
-        } while (i++ < maxPages && this.followersFeed.isMoreAvailable());
+        } while (this.peopleToFollow.length > this.current.follow_target && followersFeed.isMoreAvailable());
+
+        if (this.peopleToFollow.length > 0) {
+            this.current.follow_base = this.peopleToFollow[this.peopleToFollow.length - 1].toString();
+            await IGAccount.update(this.current);
+        }
     }
 
     private async refreshAccounts() {
@@ -369,7 +375,9 @@ export class IGAccount {
 
         console.log(
             '[info]',
-            `${this.current.username} will be active for ${this.timespan / 1000 / 60 / 60} hours.\nMax actions: ${this.maxActions}\nPosts: ${this.totalPosts}\nFollows: ${this.totalFollows}`
+            `${this.current.username} will be active for ${this.timespan / 1000 / 60 / 60} hours.\nMax actions: ${this.maxActions}\nPosts: ${this.totalPosts}\nFollows: ${
+                this.totalFollows
+            }`
         );
 
         // start a timeout

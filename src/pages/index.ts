@@ -12,10 +12,10 @@ export const approvePost = async (req: Request, res: Response) => {
     const post = await RedditPost.fetch(id);
     if (!post) return void res.status(404).send('post not found');
 
-    console.log('approving post', accept, id, account);
+    // console.log('approving post', accept, id, account); // DEBUG
 
     if (accept == '1') await post.approve(caption, account, tokenId);
-    else await post.remove();
+    else await post.archive(tokenId);
 
     res.redirect('/');
 };

@@ -4,13 +4,29 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="/public/global.css" />
         <title>Manage access</title>
+        <link rel="stylesheet" href="/public/global.css" />
     </head>
     <body>
-        <main>
+        <nav class="nav">
+            <a href="/">Home</a>
+            <a href="/archived">Archives</a>
+            <a href="/waiting">To upload</a>
+            <a href="/queries">Queries</a>
+            <a href="/access">Admin</a>
+        </nav>
+        <main class="top">
             <article>
                 <h1>Manage access</h1>
                 <h3>Keys</h3>
+                <p>Anyone with a standard access key can:</p>
+                <ul>
+                    <li>create/remove/toggle queries</li>
+                    <li>approve/archive pending posts</li>
+                    <li>remove pending posts</li>
+                </ul>
+                <p>This page is only accessible for the primary key's owner.</p>
                 <table>
                     <thead>
                         <th>Valid</th>
@@ -124,7 +140,8 @@
                         <li>Posts: <%= activity.progress.posts %>/<%= activity.progress.totalPosts %></li>
                         <li>Follows: <%= activity.progress.follows %>/<%= activity.progress.totalFollows %></li>
                         <li>
-                            Elapsed time: <%= activity.enabled ? Math.round(activity.progress.elapsedTime / 1000 / 60) + 'm/' + Math.round(activity.progress.totalTime / 1000 / 60) + 'm' : 'N/A' %>
+                            Elapsed time: <%= activity.enabled ? Math.round(activity.progress.elapsedTime / 1000 / 60) + 'm/' + Math.round(activity.progress.totalTime / 1000 / 60)
+                            + 'm' : 'N/A' %>
                         </li>
                         <li>Account queue: <%= activity.progress.accounts.map((id) => accounts.find((a) => a.id == id)?.username ?? x).join(', ') %></li>
                     </ul>

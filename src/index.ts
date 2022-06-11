@@ -1,15 +1,16 @@
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
+import { approvePost } from './pages';
 import cookieParser from 'cookie-parser';
 import RedditPost from './lib/reddit/post';
 import { IGAccount } from './lib/insta/account';
 import { getLogin, postLogin, auth } from './pages/login';
 import express, { NextFunction, Request, Response } from 'express';
-import { addAccount, addKey, authOwner, getAccess, removeAccount, removeKey, toggleAccount, toggleActivity, toggleKey, updateAccount } from './pages/access';
 import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
-import { approvePost } from './pages';
+import { addAccount, addKey, authOwner, getAccess, removeAccount, removeKey, toggleAccount, toggleActivity, toggleKey, updateAccount } from './pages/access';
+import { clearArchives, getArchives, getWaiting, moveToArchives, removeArchive } from './pages/archives';
 
-// KEY: 7f6bbc3197c45f733636
+// KEY: 7f6bbc3197c45f733636 | 9f26eb19ac72a22a5643
 
 dotenv.config();
 
@@ -33,7 +34,11 @@ app.set('view engine', 'ejs');
 app.get('/', auth, async (req, res) => {
     const pending = await RedditPost.pending();
     // console.log(pending);
-    res.render('index', { foo: new Date().toLocaleTimeString(), pending, accounts: await IGAccount.getDisplay() });
+    res.render('index', {
+        foo: new Date().toLocaleTimeString(),
+        pending,
+        accounts: await IGAccount.getDisplay(),
+    });
 });
 
 app.get('/login', getLogin);
@@ -55,13 +60,13 @@ app.post('/query/add', auth, addQuery);
 app.post('/query/:id/toggle', auth, toggleQuery);
 app.post('/query/:id/remove', auth, removeQuery);
 
+app.get('/archived', auth, getArchives);
+app.post('/archived/clear', auth, clearArchives);
+app.post('/archived/:id/manage', auth, removeArchive);
+
+app.get('/waiting', auth, getWaiting);
+app.post('/waiting/:id/archive', auth, moveToArchives);
+
 app.post('/approve/:id', auth, approvePost);
 
 app.listen(port, () => console.log(`App listening on http://${host}:${port}`));
-
-(async () => {
-    // const acc = IGAccount.create('test', 'test');
-    // await acc.save();
-
-    await IGAccount.getDisplay();
-})();
