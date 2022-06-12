@@ -228,16 +228,14 @@ export class IGAccount {
         }
     }
 
-    // careful with api spam
     private async follow(id: string | number) {
-        await Bluebird.try(async () => {
-            console.log(`[info] Attempting to follow ${id} (${new Date().toLocaleString()})`);
+        try {
             await ig.friendship.create(id);
             this.follows++;
-        }).catch(IgActionSpamError, async () => {
-            console.error('[error] Received IgActionSpamError. Idling for 30-40 minutes');
-            await sleep(rng(1000 * 60 * 30, 1000 * 60 * 40));
-        });
+        } catch (error) {
+            console.log(`[info] Attempting to follow ${id} (${new Date().toLocaleString()})`);
+            await sleep(rng(30, 60) * 60 * 1000);
+        }
     }
 
     private unfollow = async (id: string | number) => await ig.friendship.destroy(id);
