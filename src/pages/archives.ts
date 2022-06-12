@@ -20,7 +20,6 @@ export const removeArchive = async (req: Request, res: Response) => {
 
     const { remove } = req.body;
     if (remove === undefined) return void res.sendStatus(400);
-    console.log(remove);
 
     const post = await RedditPost.fetch(id);
     if (!post) return void res.sendStatus(404);

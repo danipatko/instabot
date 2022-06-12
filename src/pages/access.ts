@@ -60,7 +60,6 @@ export const updateAccount = async (req: Request, res: Response) => {
     if (!id) return void res.sendStatus(400);
 
     const { post_target, follow_target, follow_base, timespan } = req.body;
-    console.log(post_target, follow_target, follow_base, timespan);
     if (!allDefined(post_target, follow_target, follow_base, timespan)) return void res.sendStatus(400);
 
     const account = await IGAccount.fetch(id);
@@ -71,7 +70,6 @@ export const updateAccount = async (req: Request, res: Response) => {
     account.follow_base = follow_base;
     account.follow_target = parseInt(follow_target, 10);
 
-    console.log(account);
     await IGAccount.update(account);
 
     res.redirect('/access');

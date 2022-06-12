@@ -30,33 +30,19 @@ export default class Table<T extends Row> {
 
     // instert a new row
     public async insert(data: T) {
-        const items = Object.entries(data).filter(
-            ([k, v]) => typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean'
-        );
+        const items = Object.entries(data).filter(([k, v]) => typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean');
 
-        const insert =
-            'INSERT OR IGNORE INTO ' +
-            this.name +
-            ' (' +
-            items.map((x) => x[0]).join(',') +
-            ') VALUES (' +
-            items.map((_) => '?').join(',') +
-            ')';
-        if (!(await run(insert, ...items.map((x) => x[1]))))
-            console.error(`[error] Failed to insert into table '${this.name}'`);
+        const insert = 'INSERT OR IGNORE INTO ' + this.name + ' (' + items.map((x) => x[0]).join(',') + ') VALUES (' + items.map((_) => '?').join(',') + ')';
+        if (!(await run(insert, ...items.map((x) => x[1])))) console.error(`[error] Failed to insert into table '${this.name}'`);
     }
 
     // update all params in a single row by id
     public async update(data: T) {
         const { id, ...rest } = data;
-        const items = Object.entries(rest).filter(
-            ([k, v]) => k != id && (typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean')
-        );
+        const items = Object.entries(rest).filter(([k, v]) => k != id && (typeof v == 'number' || typeof v == 'string' || typeof v == 'boolean'));
 
         const update = 'UPDATE ' + this.name + ' SET ' + items.map((x) => x[0] + '=?').join(',') + ' WHERE id = ?';
-        console.log(update);
-        if (!(await run(update, ...items.map((x) => x[1]), id)))
-            console.error(`[error] Failed to update table '${this.name}'`);
+        if (!(await run(update, ...items.map((x) => x[1]), id))) console.error(`[error] Failed to update table '${this.name}'`);
     }
 
     // get a single row by id

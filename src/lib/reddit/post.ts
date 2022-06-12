@@ -190,7 +190,6 @@ export default class RedditPost implements IRedditPost {
     // get next post to upload
     public static async nextUploadable(): Promise<null | RedditPost> {
         const data = await get<IRedditPost>('SELECT * FROM redditpost WHERE accepted=true AND uploaded=false ORDER BY accepted_at ASC LIMIT 1');
-        console.log(data);
         return data ? new RedditPost(data) : null;
     }
 
@@ -199,12 +198,11 @@ export default class RedditPost implements IRedditPost {
     // get unaccepted posts (10 at a time)
     public static pending = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).and('accepted_at').is(0).limit(10));
     // get accepted posts
-    public static waiting = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(1).limit(10));
+    public static waiting = async () => await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(1).and('uploaded').is('false').limit(10));
 
     // remove unaccepted archive posts
     public static async purge(n: number) {
         const posts = await redditPostTable.get(QB.select<IRedditPost>().from('redditpost').where('accepted').is(0).and('accepted_at').not(0).limit(n));
-        console.log(posts);
         for (const post of posts) await new RedditPost(post).remove();
     }
 

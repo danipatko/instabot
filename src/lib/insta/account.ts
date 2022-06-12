@@ -1,11 +1,10 @@
-import path from 'path/posix';
 import Table from '../db/table';
 import Bluebird from 'bluebird';
 import { readFileSync } from 'fs';
 import RedditPost from '../reddit/post';
 import QueryBuilder from '../db/builder';
 import { clamp, randStr, rng, sleep } from '../util';
-import { AccountFollowersFeed, AccountFollowersFeedResponseUsersItem, IgActionSpamError, IgApiClient, IgCheckpointError } from 'instagram-private-api';
+import { AccountFollowersFeedResponseUsersItem, IgActionSpamError, IgApiClient, IgCheckpointError } from 'instagram-private-api';
 
 // actions in 24 hours
 const RATE_LIMIT = 300;
@@ -175,7 +174,6 @@ export class IGAccount {
                 .catch(IgCheckpointError, async () => {
                     console.log(ig.state.checkpoint); // Checkpoint info here
                     await ig.challenge.auto(true); // Requesting sms-code or click "It was me" button
-                    console.log(ig.state.checkpoint); // Challenge info here
                     res(false);
                 })
                 .catch((e) => {
@@ -270,9 +268,6 @@ export class IGAccount {
     }
 
     private async checkToFollow() {
-        // DEBUG
-        // this.peopleToFollow = [53250267036, 53464562100, 53438254943, 53607214137, 53598510785, 53833616120];
-        // return;
         if (!this.current || this.current.follow_target < 1 || this.peopleToFollow.length > 0) return;
 
         // check if id is the user pk
@@ -325,7 +320,7 @@ export class IGAccount {
         this.reset();
 
         // there is only one/no account -> don't log out and log back in
-        if (this.accountCycle.length < 2) return void console.log(`There is only ${this.accountCycle.length} account. Skipping relogin.`);
+        if (this.accountCycle.length < 2 && this.current) return void console.log(`There is only ${this.accountCycle.length} account. Skipping relogin.`);
 
         const id = this.accountCycle.shift();
         if (!id) return void console.error('[error] No accounts available.');
