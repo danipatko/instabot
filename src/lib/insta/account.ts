@@ -230,10 +230,11 @@ export class IGAccount {
 
     private async follow(id: string | number) {
         try {
+            console.log(`[info] Attempting to follow ${id} (${new Date().toLocaleString()})`);
             await ig.friendship.create(id);
             this.follows++;
         } catch (error) {
-            console.log(`[info] Attempting to follow ${id} (${new Date().toLocaleString()})`);
+            console.log(`[error] Failed to follow ${id}\n`, error);
             await sleep(rng(30, 60) * 60 * 1000);
         }
     }
@@ -273,6 +274,8 @@ export class IGAccount {
         // id is a username
         if (isNaN(id)) id = await ig.user.getIdByUsername(this.current.follow_base ?? 'instagram'); // default: people following @instagram
         const followersFeed = ig.feed.accountFollowers(id);
+
+        console.log(`[info] Fetching people to follow (followers of ${id})`);
 
         let currentPage: AccountFollowersFeedResponseUsersItem[] = [];
         do {
