@@ -216,7 +216,7 @@ export class IGAccount {
     }
 
     // upload a video
-    private async publishVideo(caption: string, file: string, cover: string): Promise<string | null> {
+    private async publishVideo(file: string, cover: string, caption: string): Promise<string | null> {
         try {
             const videoBuf = Buffer.from(readFileSync(file));
             const coverBuf = Buffer.from(readFileSync(cover));
@@ -266,7 +266,7 @@ export class IGAccount {
         const caption = RedditPost.defaultCaption(post.title, post.author, post.url);
 
         if (post.post_hint === 'image') await this.publishPhoto(post.file, post.caption.length ? post.caption : caption);
-        else await this.publishVideo(post.title, post.file, post.caption.length ? post.caption : caption);
+        else await this.publishVideo(post.file, post.cover, post.caption.length ? post.caption : caption);
 
         this.log(`[info] Posted '${post.title}'`);
         post.uploaded = true;
