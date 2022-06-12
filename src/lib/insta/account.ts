@@ -108,6 +108,7 @@ export class IGAccount {
     }
 
     public reload() {
+        this.disable();
         this.reset();
         this.refreshAccounts();
     }

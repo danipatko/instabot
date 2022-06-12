@@ -134,6 +134,9 @@
                     <form action="/activity/toggle" method="post">
                         <button class="button" type="submit"><%= activity.enabled ? 'disable' : 'enable' %></button>
                     </form>
+                    <form action="/account/reload" method="post">
+                        <button class="button" type="submit">Update accounts</button>
+                    </form>
                     <ul>
                         <li>Current account: <%= activity.account?.username ?? 'N/A' %></li>
                         <li>Posts: <%= activity.progress.posts %>/<%= activity.progress.totalPosts %></li>
