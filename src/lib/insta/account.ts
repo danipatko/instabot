@@ -138,9 +138,9 @@ export class IGAccount {
         return Date.now() - this.loginTime;
     }
 
-    public log(...message: any[]) {
-        this.logs += `[${new Date().toLocaleString()}] ${message.map((x) => x.toString()).join('\n')}\n`;
-        console.log(message.join('\n'));
+    public log(message: string) {
+        this.logs += `[${new Date().toLocaleString()}] ${message}\n`;
+        console.log(message);
     }
 
     public get progress(): {} {
@@ -174,17 +174,16 @@ export class IGAccount {
         return new Promise<boolean>(async (res) => {
             Bluebird.try(async () => {
                 const auth = await ig.account.login(account.username, account.password);
-                this._instance.log(auth); // DEBUG
                 await sleep(3000);
                 res(true);
             })
                 .catch(IgCheckpointError, async () => {
-                    this._instance.log(ig.state.checkpoint); // Checkpoint info here
+                    console.log(ig.state.checkpoint); // Checkpoint info here
                     await ig.challenge.auto(true); // Requesting sms-code or click "It was me" button
                     res(false);
                 })
                 .catch((e) => {
-                    this._instance.log('[error] Could not resolve checkpoint:', e, e.stack);
+                    this._instance.log(`[error] Could not resolve checkpoint:\n${e}\n${e.stack}`);
                     res(false);
                 });
         });
@@ -205,12 +204,12 @@ export class IGAccount {
                 file: buffer,
                 caption,
             });
-            this.log(`[info] Published photo\n`, res);
+            this.log(`[info] Published photo\n${JSON.stringify(res)}`);
             this.posts++;
 
             return res?.media?.id ?? 'unknown';
         } catch (error) {
-            this.log(`[error] Failed to publish photo '${file}'`, error);
+            this.log(`[error] Failed to publish photo '${file}'\n${error}`);
             return null;
         }
     }
@@ -225,12 +224,12 @@ export class IGAccount {
                 caption,
                 coverImage: coverBuf,
             });
-            this.log(`[info] Published video '${file}'\n`, res);
+            this.log(`[info] Published video '${file}'\n${JSON.stringify(res)}`);
             this.posts++;
 
             return res?.media?.id ?? 'unknown';
         } catch (error) {
-            this.log(`[error] Failed to publish video '${file}'`, error);
+            this.log(`[error] Failed to publish video '${file}', ${JSON.stringify(error)}`);
             return null;
         }
     }
@@ -241,7 +240,7 @@ export class IGAccount {
             await ig.friendship.create(id);
             this.follows++;
         } catch (error) {
-            this.log(`[error] Failed to follow ${id}\n`, error);
+            this.log(`[error] Failed to follow ${id}\n${JSON.stringify(error)}`);
             await sleep(rng(30, 60) * 60 * 1000);
         }
     }
@@ -385,8 +384,7 @@ export class IGAccount {
             }, this.timespan / (this.totalFollows + 1));
 
         this.log(
-            '[info]',
-            `${this.current.username} will be active for ${this.timespan / 1000 / 60 / 60} hours.\nMax actions: ${this.maxActions}\nPosts: ${this.totalPosts}\nFollows: ${
+            `[info] ${this.current.username} will be active for ${this.timespan / 1000 / 60 / 60} hours.\nMax actions: ${this.maxActions}\nPosts: ${this.totalPosts}\nFollows: ${
                 this.totalFollows
             }`
         );
