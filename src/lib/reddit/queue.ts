@@ -1,3 +1,4 @@
+import { rng, sleep } from '../util';
 import RedditFetch from './fetch';
 import RedditQuery from './query';
 
@@ -81,12 +82,22 @@ export default class Queue {
     }
 }
 
+let isProcessing = false;
+
 const queue: Queue = Queue.init(async (item) => {
     const q = await RedditQuery.fetch(item.id);
     if (!q) return;
 
+    // prevent overloading
+    while (isProcessing) await sleep(60_000);
+
     const posts = await RedditFetch.fetchAll(q);
-    for (const post of posts) await post.save();
+    isProcessing = true;
+    for (const post of posts) {
+        await post.save();
+        await sleep(rng(30_000, 60_000)); // wait before processing next post (ffmpeg is a heavy task)
+    }
+    isProcessing = false;
 
     const last = posts.pop();
     last && (await q.nextPage(last.name));

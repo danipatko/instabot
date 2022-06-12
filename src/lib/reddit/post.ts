@@ -215,6 +215,13 @@ export default class RedditPost implements IRedditPost {
         return last?.split('?')[0]; // fallback url has query params -> (...DASH_720.mp4?source=fallback)
     }
 
+    public async unarchive() {
+        this.accepted = false;
+        this.accepted_at = 0;
+        this.accepted_by = '';
+        await this.update();
+    }
+
     // save in database and download
     public async save() {
         console.log(`[info] saving post (${this.id}) to ${this.file}`);

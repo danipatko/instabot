@@ -1,9 +1,29 @@
 * {
-    font-family: 'Courier New', Courier, monospace;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.89rem;
 }
 
-body {
+body,
+html {
     margin: 0;
+    padding: 0;
+    min-width: fit-content;
+}
+
+h1 {
+    font-size: x-large;
+}
+
+h2 {
+    font-size: large;
+}
+
+h3 {
+    font-size: larger;
+}
+
+h4 {
+    font-size: medium;
 }
 
 body,
@@ -29,7 +49,7 @@ button {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
+    width: 100%;
     z-index: 1000;
 }
 
@@ -37,7 +57,6 @@ button {
     flex: 1;
     padding: 8px;
     text-align: center;
-    background-color: orangered;
     text-decoration: none;
     color: #fff;
 }
@@ -111,13 +130,71 @@ button {
 }
 
 .ok {
-    background-color: #0f0;
+    background-color: #0f0 !important;
 }
 
 .reject {
-    background-color: #b00;
+    background-color: #f00 !important;
 }
 
 .top {
     margin-top: 40px;
+}
+
+.query-list {
+    border: 1px solid #666;
+    width: 100vw;
+}
+
+.query-list td {
+    border: 1px solid #333;
+}
+
+.query-list th {
+    text-align: left;
+}
+
+.button {
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #565656;
+    color: #fff;
+    outline: none;
+    border: none;
+}
+
+.button:hover {
+    background-color: #aaa;
+    color: #000;
+}
+
+.create li {
+    padding: 8px;
+}
+
+.create input,
+.create select {
+    padding: 4px;
+    border: 2px solid #666;
+    border-radius: 2px;
+    outline: none;
+}
+
+.create input:focus {
+    border-color: #00faaf;
+}
+
+.create option {
+    padding: 4px;
+    background-color: #343434;
+}
+
+.tip {
+    font-size: small;
+    color: #aaa;
+    padding: 4px;
+}
+
+.p-2 {
+    padding: 6px;
 }

@@ -5,29 +5,30 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="stylesheet" href="/public/global.css" />
-        <title>Manage access</title>
-        <link rel="stylesheet" href="/public/global.css" />
+        <title>Admin</title>
     </head>
     <body>
         <nav class="nav">
             <a href="/">Home</a>
             <a href="/archived">Archives</a>
-            <a href="/waiting">To upload</a>
+            <a href="/waiting">Upload</a>
             <a href="/queries">Queries</a>
             <a href="/access">Admin</a>
         </nav>
         <main class="top">
-            <article>
-                <h1>Manage access</h1>
-                <h3>Keys</h3>
-                <p>Anyone with a standard access key can:</p>
-                <ul>
-                    <li>create/remove/toggle queries</li>
-                    <li>approve/archive pending posts</li>
-                    <li>remove pending posts</li>
-                </ul>
-                <p>This page is only accessible for the primary key's owner.</p>
-                <table>
+            <div class="p-2">
+                <h2>Manage access</h2>
+                <div>Keys</div>
+                <div class="tip">
+                    <p>Anyone with a standard access key can:</p>
+                    <ul>
+                        <li>create/remove/toggle queries</li>
+                        <li>approve/archive pending posts</li>
+                        <li>remove pending posts</li>
+                    </ul>
+                    <p>This page is only accessible for the primary key's owner.</p>
+                </div>
+                <table class="query-list">
                     <thead>
                         <th>Valid</th>
                         <th>Tag</th>
@@ -40,7 +41,7 @@
                         <tr>
                             <td>
                                 <form action="/access/<%= k.id %>/toggle" method="post">
-                                    <button type="submit"><%= k.valid ? 'disable' : 'enable' %></button>
+                                    <button class="button" type="submit"><%= k.valid ? 'disable' : 'enable' %></button>
                                 </form>
                             </td>
                             <td><%= k.tag %></td>
@@ -48,33 +49,31 @@
                             <td><%= new Date(k.added).toLocaleString() %></td>
                             <td>
                                 <form action="/access/<%= k.id %>/remove" method="post">
-                                    <button type="submit">Delete</button>
+                                    <button class="button" type="submit">Delete</button>
                                 </form>
                             </td>
                         </tr>
                         <% }) %>
                     </tbody>
                 </table>
-                <ul></ul>
-                <form action="/access/new" method="post">
+                <form class="create" action="/access/new" method="post">
                     <label for="tag">Add new key</label>
                     <input type="text" name="tag" placeholder="Tag" />
-                    <button type="submit">Add</button>
+                    <button class="button" type="submit">Add</button>
                 </form>
-            </article>
-            <article>
-                <h1>Instagram accounts and activities</h1>
+            </div>
+            <div class="p-2">
+                <h2>Instagram accounts and activities</h2>
                 <ul>
                     <% accounts.forEach((a) => { %>
-                    <li>
+                    <li class="p-2 create">
                         <div>
-                            <div>
-                                <b><%= a.username %></b> (<%= a.active ? 'active' : 'disabled' %>)
-                                <form action="/account/<%= a.id %>/toggle" method="post">
-                                    <button type="submit"><%= a.active ? 'disable' : 'enable' %></button>
-                                </form>
-                            </div>
-
+                            <b><%= a.username %></b> (<%= a.active ? 'active' : 'disabled' %>)
+                            <form action="/account/<%= a.id %>/toggle" method="post">
+                                <button class="button" type="submit"><%= a.active ? 'disable' : 'enable' %></button>
+                            </form>
+                        </div>
+                        <div>
                             <form action="/account/<%= a.id %>/update" method="post">
                                 <div>
                                     <label for="follow_target">Follow target</label>
@@ -92,21 +91,21 @@
                                     <label for="follow_base">This account's followers will be followed</label>
                                     <input name="follow_base" type="text" value="<%= a.follow_base %>" placeholder="Follow base @" />
                                 </div>
-                                <button type="submit">save</button>
+                                <div class="p-2">
+                                    <button class="button" type="submit">save</button>
+                                </div>
                             </form>
 
-                            <div>
-                                <form action="/account/<%= a.id %>/remove" method="post">
-                                    <button type="submit">remove</button>
-                                </form>
-                            </div>
+                            <form class="p-2" action="/account/<%= a.id %>/remove" method="post">
+                                <button class="button reject" type="submit">remove</button>
+                            </form>
                         </div>
                     </li>
                     <% }) %>
                 </ul>
-                <div>
+                <div class="create">
                     <form action="/account/new" method="post">
-                        <div>Add new account</div>
+                        <h3>Add new account</h3>
                         <ul>
                             <li>
                                 <input type="text" name="username" placeholder="Username" />
@@ -127,13 +126,13 @@
                                 <input step="0.01" name="timespan" type="number" value="24" min="0.01" />
                             </li>
                         </ul>
-                        <button type="submit">Add</button>
+                        <button class="button" type="submit">Add</button>
                     </form>
                 </div>
-                <div>
-                    <h1>Account activity</h1>
+                <div class="create">
+                    <h3>Account activity</h3>
                     <form action="/activity/toggle" method="post">
-                        <button type="submit"><%= activity.enabled ? 'disable' : 'enable' %></button>
+                        <button class="button" type="submit"><%= activity.enabled ? 'disable' : 'enable' %></button>
                     </form>
                     <ul>
                         <li>Current account: <%= activity.account?.username ?? 'N/A' %></li>
@@ -146,7 +145,7 @@
                         <li>Account queue: <%= activity.progress.accounts.map((id) => accounts.find((a) => a.id == id)?.username ?? x).join(', ') %></li>
                     </ul>
                 </div>
-            </article>
+            </div>
         </main>
     </body>
 </html>

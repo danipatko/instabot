@@ -18,8 +18,15 @@ export const removeArchive = async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id) return void res.sendStatus(400);
 
+    const { remove } = req.body;
+    if (remove === undefined) return void res.sendStatus(400);
+    console.log(remove);
+
     const post = await RedditPost.fetch(id);
-    post && (await post.remove());
+    if (!post) return void res.sendStatus(404);
+
+    if (remove == '1') await post.remove();
+    else await post.unarchive();
 
     res.redirect('/archived');
 };

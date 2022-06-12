@@ -5,10 +5,10 @@ import { readFileSync } from 'fs';
 import RedditPost from '../reddit/post';
 import QueryBuilder from '../db/builder';
 import { clamp, randStr, rng, sleep } from '../util';
-import { AccountFollowersFeed, AccountFollowersFeedResponseUsersItem, IgApiClient, IgCheckpointError } from 'instagram-private-api';
+import { AccountFollowersFeed, AccountFollowersFeedResponseUsersItem, IgActionSpamError, IgApiClient, IgCheckpointError } from 'instagram-private-api';
 
 // actions in 24 hours
-const RATE_LIMIT = 2400;
+const RATE_LIMIT = 300;
 
 // one and only client
 export const ig = new IgApiClient();
@@ -201,6 +201,8 @@ export class IGAccount {
                 caption,
             });
             console.log(`[info] Published photo\n`, res);
+            this.posts++;
+
             return res?.media?.id ?? 'unknown';
         } catch (error) {
             console.error(`[error] Failed to publish photo '${file}'`, error);
@@ -219,6 +221,8 @@ export class IGAccount {
                 coverImage: coverBuf,
             });
             console.log(`[info] Published video '${file}'\n`, res);
+            this.posts++;
+
             return res?.media?.id ?? 'unknown';
         } catch (error) {
             console.error(`[error] Failed to publish video '${file}'`, error);
@@ -226,35 +230,39 @@ export class IGAccount {
         }
     }
 
-    private follow = async (id: string | number) => await ig.friendship.create(id);
+    // careful with api spam
+    private async follow(id: string | number) {
+        await Bluebird.try(async () => {
+            console.log(`[info] Attempting to follow ${id} (${new Date().toLocaleString()})`);
+            await ig.friendship.create(id);
+            this.follows++;
+        }).catch(IgActionSpamError, async () => {
+            console.error('[error] Received IgActionSpamError. Idling for 30-40 minutes');
+            await sleep(rng(1000 * 60 * 30, 1000 * 60 * 40));
+        });
+    }
 
     private unfollow = async (id: string | number) => await ig.friendship.destroy(id);
 
-    // follow a person
+    // follow a person (this might take 30-40 minutes to prevent further API spam errors)
     private async followNext() {
         this.actions++;
-        console.log(`FOLLOWING ${new Date().toLocaleString()}`);
-
         await this.checkToFollow();
         const user = this.peopleToFollow.pop();
-        console.log('Attempting to follow ', user);
         user && (await this.follow(user));
-        this.follows++;
     }
 
     // create a post
     private async postNext() {
-        console.log(`POSTING ${new Date().toLocaleString()}`);
-
         const post = await RedditPost.nextUploadable();
         if (!post) return;
 
+        console.log(`[info] Attempting to publish post '${post.title}' (${new Date().toLocaleString()})`);
         this.actions++;
         const caption = RedditPost.defaultCaption(post.title, post.author, post.url);
 
         if (post.post_hint === 'image') await this.publishPhoto(post.file, post.caption.length ? post.caption : caption);
         else await this.publishVideo(post.title, post.file, post.caption.length ? post.caption : caption);
-        this.posts++;
 
         console.log(`[info] Posted '${post.title}'`);
         post.uploaded = true;
@@ -316,12 +324,12 @@ export class IGAccount {
         console.log(`[info] Logging into next account`);
         this.reset();
 
+        // there is only one/no account -> don't log out and log back in
+        if (this.accountCycle.length < 2) return void console.log(`There is only ${this.accountCycle.length} account. Skipping relogin.`);
+
         const id = this.accountCycle.shift();
         if (!id) return void console.error('[error] No accounts available.');
         this.accountCycle.push(id);
-
-        // there is only one account -> don't log out and log back in
-        if (this.current?.id == id) return void console.log('[info] Already logged into account. Passing login.');
 
         await IGAccount.logout();
         if (!(await IGAccount.login(id))) {
