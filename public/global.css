@@ -198,3 +198,7 @@ button {
 .p-2 {
     padding: 6px;
 }
+
+.logs {
+    white-space: pre;
+}
