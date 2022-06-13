@@ -51,7 +51,10 @@ app.post('/activity/toggle', authOwner, toggleActivity);
 app.post('/account/:id/toggle', authOwner, toggleAccount);
 app.post('/account/:id/remove', authOwner, removeAccount);
 app.post('/account/:id/update', authOwner, updateAccount);
-app.post('/account/reload', authOwner, IGAccount._instance.reload);
+app.post('/account/reload', authOwner, (req, res) => {
+    IGAccount._.reload();
+    res.redirect('/access');
+});
 
 app.get('/queries', auth, getQuery);
 app.post('/query/add', auth, addQuery);

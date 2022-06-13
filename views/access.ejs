@@ -131,12 +131,15 @@
                 </div>
                 <div class="create">
                     <h3>Account activity</h3>
-                    <form action="/activity/toggle" method="post">
+                    <form class="p-2" action="/activity/toggle" method="post">
                         <button class="button" type="submit"><%= activity.enabled ? 'disable' : 'enable' %></button>
                     </form>
-                    <form action="/account/reload" method="post">
-                        <button class="button" type="submit">Update accounts</button>
-                    </form>
+                    <div class="p-2">
+                        <form action="/account/reload" method="post">
+                            <button class="button" type="submit">Update accounts</button>
+                        </form>
+                        <p class="tip">When updating accounts, the changes will <b>NOT</b> be immediate. You have to update accounts then enable again.</p>
+                    </div>
                     <ul>
                         <li>Current account: <%= activity.account?.username ?? 'N/A' %></li>
                         <li>Posts: <%= activity.progress.posts %>/<%= activity.progress.totalPosts %></li>

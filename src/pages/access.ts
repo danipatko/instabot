@@ -22,13 +22,13 @@ export const getAccess = async (req: Request, res: Response) => {
         keys,
         accounts,
         logs: Logs.getLastThousand(),
-        activity: { enabled: IGAccount._instance.enabled, progress: IGAccount._instance.progress, account: IGAccount._instance.current },
+        activity: { enabled: IGAccount._.enabled, progress: IGAccount._.progress, account: IGAccount._.current },
     });
 };
 
 export const toggleActivity = async (req: Request, res: Response) => {
-    if (IGAccount._instance.enabled) IGAccount._instance.disable();
-    else IGAccount._instance.enable();
+    if (IGAccount._.enabled) IGAccount._.disable();
+    else IGAccount._.enable();
 
     res.redirect('/access');
 };
@@ -54,7 +54,6 @@ export const toggleAccount = async (req: Request, res: Response) => {
     if (!account) return void res.sendStatus(404);
 
     account.active = !account.active;
-    account.active ? IGAccount._instance.enableAccount(account.id) : IGAccount._instance.disableAccount(account.id);
     await IGAccount.update(account);
 
     res.redirect('/access');

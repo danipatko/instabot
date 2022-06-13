@@ -45,7 +45,7 @@ const instaAccounts = new Table<InstaAccount>(
 
 export class IGAccount {
     private static instance: IGAccount;
-    public static get _instance(): IGAccount {
+    public static get _(): IGAccount {
         return this.instance || (this.instance = new this());
     }
 
@@ -83,12 +83,10 @@ export class IGAccount {
             follow_target,
             unfollow_target: 0,
         });
-        IGAccount._instance.enableAccount(id);
     }
 
     public static async removeAccount(id: string) {
         await instaAccounts.remove(id);
-        IGAccount._instance.disableAccount(id);
     }
 
     private constructor() {
@@ -107,10 +105,10 @@ export class IGAccount {
         this.peopleToFollow = [];
     }
 
-    public reload() {
+    public async reload(): Promise<void> {
         this.disable();
         this.reset();
-        this.refreshAccounts();
+        await this.refreshAccounts();
     }
 
     public enabled: boolean = false;
@@ -168,8 +166,8 @@ export class IGAccount {
         // TODO: clean up
         return new Promise<boolean>(async (res) => {
             Bluebird.try(async () => {
-                const auth = await ig.account.login(account.username, account.password);
-                await sleep(3000);
+                await ig.account.login(account.username, account.password);
+                await sleep(rng(3, 6) * 1000);
                 res(true);
             })
                 .catch(IgCheckpointError, async () => {
@@ -185,10 +183,10 @@ export class IGAccount {
     }
 
     // log out of current account
-    public static async logout() {
+    public static async logout(): Promise<void> {
         await ig.account.logout();
         Logs.info(`Logged out of account '${this.instance.current?.username ?? 'unknown'}'`);
-        this._instance.reset();
+        this._.reset();
     }
 
     // publish a photo
@@ -229,7 +227,7 @@ export class IGAccount {
         }
     }
 
-    private async follow(id: string | number) {
+    private async follow(id: string | number): Promise<void> {
         try {
             Logs.info(`Attempting to follow ${id}`);
             await ig.friendship.create(id);
@@ -243,7 +241,7 @@ export class IGAccount {
     private unfollow = async (id: string | number) => await ig.friendship.destroy(id);
 
     // follow a person (this might take 30-40 minutes to prevent further API spam errors)
-    private async followNext() {
+    private async followNext(): Promise<void> {
         this.actions++;
         await this.checkToFollow();
         const user = this.peopleToFollow.pop();
@@ -251,7 +249,7 @@ export class IGAccount {
     }
 
     // create a post
-    private async postNext() {
+    private async postNext(): Promise<void> {
         const post = await RedditPost.nextUploadable();
         if (!post) return void Logs.info(`PostNext - No post available for uploading.`);
 
@@ -267,7 +265,7 @@ export class IGAccount {
         await post.update();
     }
 
-    private async checkToFollow() {
+    private async checkToFollow(): Promise<void> {
         if (!this.current || this.current.follow_target < 1 || this.peopleToFollow.length > 0) return;
 
         // check if id is the user pk
@@ -292,32 +290,18 @@ export class IGAccount {
         }
     }
 
-    private async refreshAccounts() {
+    private async refreshAccounts(): Promise<void> {
         this.accountCycle = (await IGAccount.getActive()).map((a) => a.id);
     }
 
-    // remove an account from the cycle
-    public async disableAccount(id: string) {
-        this.accountCycle = this.accountCycle.filter((x) => x !== id);
-        if (this.enabled && this.current?.id == id) this.restart();
-    }
-
-    public async restart() {
+    public async restart(): Promise<void> {
         this.stopActivity();
         await this.nextAccount();
         await this.startActivity();
     }
 
-    // add an account to the cycle
-    public enableAccount(id: string) {
-        this.accountCycle.push(id);
-        if (!this.enabled) return;
-        this.stopActivity();
-        this.startActivity();
-    }
-
     // log into the next acount in the cycle
-    public async nextAccount() {
+    public async nextAccount(): Promise<void> {
         Logs.info(`Logging into next account`);
         this.reset();
 
@@ -336,15 +320,15 @@ export class IGAccount {
     }
 
     // start posting and following
-    private async startActivity() {
+    private async startActivity(): Promise<void> {
         // no active accounts in cycle
         if (!this.accountCycle.length) {
             this.enabled = false;
-            return void Logs.error('StartActivity - No active accounts.');
+            return void Logs.error('StartActivity - No active accounts. May need to update account list.');
         }
 
-        // if there is no current account, log into the first one
         if (this.current) this.current = await instaAccounts.fetch(this.current.id);
+        // if there is no current account, log into the first one
         else await this.nextAccount();
 
         // no active account
@@ -392,13 +376,13 @@ export class IGAccount {
         }, this.timespan);
     }
 
-    private stopActivity() {
+    private stopActivity(): void {
         this.postInterval && clearInterval(this.postInterval);
         this.followInterval && clearInterval(this.followInterval);
         this.activityTimeout && clearTimeout(this.activityTimeout);
     }
 
-    public async enable() {
+    public async enable(): Promise<void> {
         this.enabled = true;
         await this.startActivity();
     }
