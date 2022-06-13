@@ -148,7 +148,7 @@
                         <li>Account queue: <%= activity.progress.accounts.map((id) => accounts.find((a) => a.id == id)?.username ?? x).join(', ') %></li>
                     </ul>
                     <h3>Logs</h3>
-                    <code class="logs"><%= activity.progress.logs %></code>
+                    <code class="logs"><%= logs %></code>
                 </div>
             </div>
         </main>

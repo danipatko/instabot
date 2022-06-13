@@ -3,7 +3,7 @@ import Bluebird from 'bluebird';
 import { readFileSync } from 'fs';
 import RedditPost from '../reddit/post';
 import QueryBuilder from '../db/builder';
-import { clamp, randStr, rng, sleep } from '../util';
+import { clamp, Logs, randStr, rng, sleep } from '../util';
 import { AccountFollowersFeedResponseUsersItem, IgActionSpamError, IgApiClient, IgCheckpointError } from 'instagram-private-api';
 
 // actions in 24 hours
@@ -139,14 +139,8 @@ export class IGAccount {
         return Date.now() - this.loginTime;
     }
 
-    public log(message: string) {
-        this.logs += `[${new Date().toLocaleString()}] ${message}\n`;
-        console.log(message);
-    }
-
     public get progress(): {} {
         return {
-            logs: this.logs,
             posts: this.posts,
             follows: this.follows,
             actions: this.actions,
@@ -163,7 +157,7 @@ export class IGAccount {
     public static async login(id: string): Promise<boolean> {
         const account = await instaAccounts.fetch(id);
         if (!account) {
-            this._instance.log(`[error] account '${id}' not found`);
+            Logs.info(`Login - Account '${id}' not found`);
             return false;
         }
 
@@ -184,7 +178,7 @@ export class IGAccount {
                     res(false);
                 })
                 .catch((e) => {
-                    this._instance.log(`[error] Could not resolve checkpoint:\n${e}\n${e.stack}`);
+                    Logs.error(`Could not resolve checkpoint:\n${e}\n${e.stack}`);
                     res(false);
                 });
         });
@@ -193,7 +187,7 @@ export class IGAccount {
     // log out of current account
     public static async logout() {
         await ig.account.logout();
-        this._instance.log(`[info] logged out of account '${this.instance.current?.username ?? 'unknown'}'`);
+        Logs.info(`Logged out of account '${this.instance.current?.username ?? 'unknown'}'`);
         this._instance.reset();
     }
 
@@ -205,18 +199,18 @@ export class IGAccount {
                 file: buffer,
                 caption,
             });
-            this.log(`[info] Published photo\n${JSON.stringify(res)}`);
+            Logs.info(`Published photo\n${JSON.stringify(res)}`);
             this.posts++;
 
             return res?.media?.id ?? 'unknown';
         } catch (error) {
-            this.log(`[error] Failed to publish photo '${file}'\n${error}`);
+            Logs.error(`Failed to publish photo '${file}'\n${error}`);
             return null;
         }
     }
 
     // upload a video
-    private async publishVideo(file: string, cover: string, caption: string): Promise<string | null> {
+    public async publishVideo(file: string, cover: string, caption: string): Promise<string | null> {
         try {
             const videoBuf = Buffer.from(readFileSync(file));
             const coverBuf = Buffer.from(readFileSync(cover));
@@ -225,23 +219,23 @@ export class IGAccount {
                 caption,
                 coverImage: coverBuf,
             });
-            this.log(`[info] Published video '${file}'\n${JSON.stringify(res)}`);
+            Logs.info(`Published video '${file}'\n${JSON.stringify(res)}`);
             this.posts++;
 
             return res?.media?.id ?? 'unknown';
         } catch (error) {
-            this.log(`[error] Failed to publish video '${file}', ${JSON.stringify(error)}`);
+            Logs.error(`Failed to publish video '${file}', ${error}`);
             return null;
         }
     }
 
     private async follow(id: string | number) {
         try {
-            this.log(`[info] Attempting to follow ${id}`);
+            Logs.info(`Attempting to follow ${id}`);
             await ig.friendship.create(id);
             this.follows++;
         } catch (error) {
-            this.log(`[error] Failed to follow ${id}\n${JSON.stringify(error)}`);
+            Logs.info(`Failed to follow ${id}\n${error}`);
             await sleep(rng(30, 60) * 60 * 1000);
         }
     }
@@ -259,16 +253,16 @@ export class IGAccount {
     // create a post
     private async postNext() {
         const post = await RedditPost.nextUploadable();
-        if (!post) return;
+        if (!post) return void Logs.info(`PostNext - No post available for uploading.`);
 
-        this.log(`[info] Attempting to publish post '${post.title}'`);
+        Logs.info(`Attempting to publish post '${post.title}'`);
         this.actions++;
         const caption = RedditPost.defaultCaption(post.title, post.author, post.url);
 
         if (post.post_hint === 'image') await this.publishPhoto(post.file, post.caption.length ? post.caption : caption);
         else await this.publishVideo(post.file, post.cover, post.caption.length ? post.caption : caption);
 
-        this.log(`[info] Posted '${post.title}'`);
+        Logs.info(`Published post '${post.title}'`);
         post.uploaded = true;
         await post.update();
     }
@@ -282,7 +276,7 @@ export class IGAccount {
         if (isNaN(id)) id = await ig.user.getIdByUsername(this.current.follow_base ?? 'instagram'); // default: people following @instagram
         const followersFeed = ig.feed.accountFollowers(id);
 
-        this.log(`[info] Fetching people to follow (followers of ${id})`);
+        Logs.info(`Fetching people to follow (followers of ${id})`);
 
         let currentPage: AccountFollowersFeedResponseUsersItem[] = [];
         do {
@@ -324,20 +318,20 @@ export class IGAccount {
 
     // log into the next acount in the cycle
     public async nextAccount() {
-        this.log(`[info] Logging into next account`);
+        Logs.info(`Logging into next account`);
         this.reset();
 
         // there is only one/no account -> don't log out and log back in
-        if (this.accountCycle.length < 2 && this.current) return void this.log(`There is only ${this.accountCycle.length} account. Skipping relogin.`);
+        if (this.accountCycle.length < 2 && this.current) return void Logs.info(`There is only ${this.accountCycle.length} account. Skipping relogin.`);
 
         const id = this.accountCycle.shift();
-        if (!id) return void this.log('[error] No accounts available.');
+        if (!id) return void Logs.error('NextAccount - No accounts available.');
         this.accountCycle.push(id);
 
         await IGAccount.logout();
         if (!(await IGAccount.login(id))) {
             this.disable();
-            this.log(`[error] Could not log into account '${id}'`);
+            Logs.error(`NextAccount - Could not log into account '${id}'`);
         }
     }
 
@@ -346,7 +340,7 @@ export class IGAccount {
         // no active accounts in cycle
         if (!this.accountCycle.length) {
             this.enabled = false;
-            return void this.log('[error] No active accounts.');
+            return void Logs.error('StartActivity - No active accounts.');
         }
 
         // if there is no current account, log into the first one
@@ -356,7 +350,7 @@ export class IGAccount {
         // no active account
         if (!this.current) {
             this.enabled = false;
-            return void this.log('[error] No current account.');
+            return void Logs.error('StartActivity - No current account.');
         }
 
         // the loop has been restarted
@@ -384,10 +378,10 @@ export class IGAccount {
                 await this.followNext();
             }, this.timespan / (this.totalFollows + 1));
 
-        this.log(
-            `[info] ${this.current.username} will be active for ${this.timespan / 1000 / 60 / 60} hours.\nMax actions: ${this.maxActions}\nPosts: ${this.totalPosts}\nFollows: ${
-                this.totalFollows
-            }`
+        Logs.info(
+            `StartActivity - ${this.current.username} will be active for ${this.timespan / 1000 / 60 / 60} hours.\nMax actions: ${this.maxActions}\nPosts: ${
+                this.totalPosts
+            }\nFollows: ${this.totalFollows}`
         );
 
         // start a timeout

@@ -1,4 +1,4 @@
-import { rng, sleep } from '../util';
+import { Logs, rng, sleep } from '../util';
 import RedditFetch from './fetch';
 import RedditQuery from './query';
 
@@ -47,7 +47,7 @@ export default class Queue {
         const [item] = this.items.splice(0, 1); // remove the first item
         if (!item) return;
 
-        console.log(`[info] tick at item ${item.id} - ${item.name}`);
+        Logs.info(`Fetch - Tick at item ${item.id} - ${item.name};`);
         this.items.push({ ...item, time: new Date(Date.now() + item.interval * 60 * 60 * 1000) });
         this.refresh();
         this.onTick(item);
@@ -60,7 +60,7 @@ export default class Queue {
         const next = this.items[0];
         if (!next) return;
 
-        console.log(`[info] Waiting for next item '${next.name}' at ${next.time.toLocaleString()}`);
+        Logs.info(`Fetch - Waiting for next item '${next.name}' at ${next.time.toLocaleString()}`);
         this.timer = setTimeout(() => this.tick(), next.time.getTime() - Date.now());
     }
 

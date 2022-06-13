@@ -1,5 +1,5 @@
 import { getKey } from './login';
-import { randStr } from '../lib/util';
+import { Logs, randStr } from '../lib/util';
 import AccessKeys from '../lib/accesskeys';
 import { Response, Request, NextFunction } from 'express';
 import { IGAccount } from '../lib/insta/account';
@@ -18,7 +18,12 @@ export const getAccess = async (req: Request, res: Response) => {
     const keys = await AccessKeys.getKeys();
     const accounts = await IGAccount.getAll();
 
-    res.render('access', { keys, accounts, activity: { enabled: IGAccount._instance.enabled, progress: IGAccount._instance.progress, account: IGAccount._instance.current } });
+    res.render('access', {
+        keys,
+        accounts,
+        logs: Logs.getLastThousand(),
+        activity: { enabled: IGAccount._instance.enabled, progress: IGAccount._instance.progress, account: IGAccount._instance.current },
+    });
 };
 
 export const toggleActivity = async (req: Request, res: Response) => {

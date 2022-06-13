@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { randStr } from '../lib/util';
+import { Logs, randStr } from '../lib/util';
 import AccessKeys from '../lib/accesskeys';
 import { NextFunction, Request, Response } from 'express';
 
@@ -60,7 +60,7 @@ export const auth = (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!getKey(token)) return void res.redirect('/login');
     } catch (error) {
-        console.log(`[info] Failed login attempt from ${req.ip}`);
+        Logs.info(`Login - Failed login attempt from ${req.ip}`);
         return void res.redirect('/login');
     }
     next();

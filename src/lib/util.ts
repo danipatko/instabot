@@ -34,3 +34,30 @@ export const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, 
 export const rng = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 export const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
+
+export class Logs {
+    private static instance: Logs;
+    private logs: string = '';
+
+    public static get _(): Logs {
+        return this.instance || (this.instance = new this());
+    }
+
+    public static getLastThousand() {
+        return this._.logs.split('\n').slice(0, 1000).join('\n');
+    }
+
+    public static getAll() {
+        return this._.logs;
+    }
+
+    public static info(message: string) {
+        console.log(message);
+        this._.logs += `[INFO] (${new Date().toLocaleString()}) - ${message}\n`;
+    }
+
+    public static error(message: string) {
+        console.error(message);
+        this._.logs += `[ERROR] (${new Date().toLocaleString()}) - ${message}\n`;
+    }
+}

@@ -10,8 +10,6 @@ import { addQuery, getQuery, removeQuery, toggleQuery } from './pages/query';
 import { addAccount, addKey, authOwner, getAccess, removeAccount, removeKey, toggleAccount, toggleActivity, toggleKey, updateAccount } from './pages/access';
 import { clearArchives, getArchives, getWaiting, moveToArchives, removeArchive } from './pages/archives';
 
-// KEY: 7f6bbc3197c45f733636 | 9f26eb19ac72a22a5643
-
 dotenv.config();
 
 const port = 3000;
@@ -33,7 +31,6 @@ app.set('view engine', 'ejs');
 
 app.get('/', auth, async (req, res) => {
     const pending = await RedditPost.pending();
-    // console.log(pending);
     res.render('index', {
         foo: new Date().toLocaleTimeString(),
         pending,

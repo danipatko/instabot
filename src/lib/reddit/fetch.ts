@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import RedditQuery from './query';
 import RedditPost, { RedditMediaPost } from './post';
+import { Logs } from '../util';
 
 export interface RedditQueryResult {
     data: {
@@ -12,7 +13,7 @@ export interface RedditQueryResult {
 export default class RedditFetch {
     // fetch an array of posts
     public static async fetch(q: RedditQuery): Promise<RedditQueryResult | null> {
-        console.log(`[info] fetching ${q.url}`);
+        Logs.info(`Fetching ${q.url}`);
         const response = await fetch(q.url, {
             method: 'GET',
             headers: {

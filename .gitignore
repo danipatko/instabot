@@ -11,6 +11,7 @@ public/*.jpg
 public/*.jpeg
 public/*.mp4
 public/*.mov
+public/*.gif
 
 *.db
 sqlite.db

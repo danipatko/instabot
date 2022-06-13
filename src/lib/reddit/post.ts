@@ -4,10 +4,10 @@ import QB from '../db/builder';
 import fetch from 'node-fetch';
 import Table from '../db/table';
 import ffmpeg from 'fluent-ffmpeg';
-import { randStr, sleep } from '../util';
+import { Logs, randStr, sleep } from '../util';
 import { each, get } from '../db';
 
-ffmpeg.setFfmpegPath(process.platform === 'win32' ? 'C:/Users/Dani/home/Setups/ffmpeg-2022-06-01-git-c6364b711b-full_build/bin/ffmpeg.exe' : 'ffmpeg');
+ffmpeg.setFfmpegPath('ffmpeg');
 
 export interface RedditVideo {
     width: number;
@@ -222,8 +222,8 @@ export default class RedditPost implements IRedditPost {
 
     // save in database and download
     public async save() {
-        console.log(`[info] saving post (${this.id}) to ${this.file}`);
-        if (!(await this.download())) return void console.log(`[info] Discarding post ${this.name}`);
+        Logs.info(`Saving post (${this.id}) to ${this.file}`);
+        if (!(await this.download())) return void Logs.info(`Discarding post '${this.name}'`);
         await redditPostTable.insert({
             ...this,
             accepted: false,
@@ -242,7 +242,7 @@ export default class RedditPost implements IRedditPost {
         // if(this.post_hint === 'hosted:video') fs.unlinkSync(path('p'));
     }
 
-    // download a file
+    // download a file (returns false if the download was unsuccessful)
     protected async downloadFile(url: string, id: string): Promise<boolean> {
         const response = await fetch(url);
         if (!response.ok) {
@@ -262,10 +262,10 @@ export default class RedditPost implements IRedditPost {
     public async download(): Promise<boolean> {
         try {
             // image
-            if (this.post_hint !== 'hosted:video') return await this.downloadFile(this.url, this.name);
+            if (this.post_hint !== 'hosted:video') return (await this.downloadFile(this.url, this.name)) && (await this.prepareImage());
+
             // video
             if (!((await this.downloadFile(this.url, this.name + 'video')) && (await this.downloadFile(this.getAudioUrl(), this.name + 'audio')) && (await this.prepareVideo()))) {
-                console.error(`[error] Failed to download ${this.name}`);
                 return false;
             }
             // wait and remove unnecessary files
@@ -276,7 +276,7 @@ export default class RedditPost implements IRedditPost {
             return true;
         } catch (error) {
             console.error(`[error] Failed to remove extra files of ${this.name}\n`, error);
-            return true;
+            return false;
         }
     }
 
@@ -284,6 +284,7 @@ export default class RedditPost implements IRedditPost {
     protected async prepareVideo(): Promise<boolean> {
         return new Promise((res) => {
             if (!this.bitrate_kbps) return false;
+            Logs.info(`Attempting to prepare video ${this.name}`);
             try {
                 ffmpeg()
                     .input(path.join('public', `${this.name}video.mp4`))
@@ -298,14 +299,32 @@ export default class RedditPost implements IRedditPost {
                     .takeScreenshots({
                         count: 1,
                         timemarks: ['0.0'],
-                        filename: path.join('public', `${this.name}cover.png`),
+                        filename: path.join('public', `${this.name}cover.jpg`),
                     })
-                    .on('progress', (p) => console.log(`[info] Converting ${this.name}: ${Math.floor(p.percent)}%`))
+                    // .on('progress', (p) => Logs.info(`Converting ${this.name}: ${Math.floor(p.percent)}%`))
                     .once('end', () => res(true))
                     .run();
             } catch (error) {
-                console.log(`[error] Failed to convert ${this.name}\n`, error);
+                Logs.error(`Failed to convert ${this.name}\n${error}`);
                 return res(false);
+            }
+        });
+    }
+
+    protected async prepareImage(): Promise<boolean> {
+        return new Promise<boolean>((res) => {
+            try {
+                ffmpeg()
+                    .input(this.file)
+                    .size('1080x?')
+                    .aspect('1:1')
+                    .autopad(true, 'black')
+                    .output(this.file)
+                    .once('end', () => res(true))
+                    .run();
+            } catch (error) {
+                Logs.error(`Failed to convert image '${this.name}'\n${error}`);
+                res(false);
             }
         });
     }
@@ -315,7 +334,7 @@ export default class RedditPost implements IRedditPost {
     }
 
     public get cover(): string {
-        return path.join('public', this.name + 'cover.png');
+        return path.join('public', this.name + 'cover.jpg');
     }
 
     public static defaultCaption(title: string, author: string, url: string): string {
