@@ -264,7 +264,7 @@ export default class RedditPost implements IRedditPost {
             // image
             if (this.post_hint !== 'hosted:video') {
                 const tempName = this.name + 'temp';
-                const tempFile = `${tempName}.${RedditPost.getExtension(this.url)}`;
+                const tempFile = path.join('public', `${tempName}.${RedditPost.getExtension(this.url)}`);
                 const result = (await this.downloadFile(this.url, tempName)) && (await this.prepareImage(tempFile));
                 fs.unlinkSync(tempFile);
                 return result;
