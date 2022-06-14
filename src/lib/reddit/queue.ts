@@ -49,8 +49,8 @@ export default class Queue {
 
         Logs.info(`Fetch - Tick at item ${item.id} - ${item.name};`);
         this.items.push({ ...item, time: new Date(Date.now() + item.interval * 60 * 60 * 1000) });
-        this.refresh();
         this.onTick(item);
+        this.refresh();
     }
 
     // start the timer
@@ -82,22 +82,16 @@ export default class Queue {
     }
 }
 
-let isProcessing = false;
-
 const queue: Queue = Queue.init(async (item) => {
+    Logs.info(`Fetching item '${item.name}' now`);
     const q = await RedditQuery.fetch(item.id);
     if (!q) return;
 
-    // prevent overloading
-    while (isProcessing) await sleep(60_000);
-
     const posts = await RedditFetch.fetchAll(q);
-    isProcessing = true;
     for (const post of posts) {
         await post.save();
-        await sleep(rng(30_000, 60_000)); // wait before processing next post (ffmpeg is a heavy task)
+        await sleep(10_000);
     }
-    isProcessing = false;
 
     const last = posts.pop();
     last && (await q.nextPage(last.name));

@@ -263,12 +263,11 @@ export default class RedditPost implements IRedditPost {
         try {
             // image
             if (this.post_hint !== 'hosted:video') {
-                const tempFile = this.name + 'temp';
-                if ((await this.downloadFile(this.url, tempFile)) && (await this.prepareImage())) {
-                    // remove temp file
-                    fs.unlinkSync(`${tempFile}.${RedditPost.getExtension(this.url)}`);
-                    return true;
-                } else return false;
+                const tempName = this.name + 'temp';
+                const tempFile = `${tempName}.${RedditPost.getExtension(this.url)}`;
+                const result = (await this.downloadFile(this.url, tempName)) && (await this.prepareImage(tempFile));
+                fs.unlinkSync(tempFile);
+                return result;
             }
 
             // video
@@ -278,11 +277,10 @@ export default class RedditPost implements IRedditPost {
             // remove unnecessary files
             fs.unlinkSync(path.join('public', `${this.name}video.mp4`));
             fs.unlinkSync(path.join('public', `${this.name}audio.mp4`));
-            return true;
         } catch (error) {
             console.error(`[error] Failed to remove extra files of ${this.name}\n`, error);
-            return false;
         }
+        return true;
     }
 
     // concat the video and audio, resize, create cover image
@@ -320,11 +318,11 @@ export default class RedditPost implements IRedditPost {
         });
     }
 
-    protected async prepareImage(): Promise<boolean> {
+    protected async prepareImage(input: string): Promise<boolean> {
         return new Promise<boolean>((res) => {
             try {
                 ffmpeg()
-                    .input(this.file)
+                    .input(input)
                     .size('1080x?')
                     .aspect('1:1')
                     .autopad(true, 'black')
