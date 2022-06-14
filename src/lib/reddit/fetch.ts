@@ -40,9 +40,9 @@ export default class RedditFetch {
         const posts: RedditPost[] = [];
         const result = await this.fetch(q);
         if (!result) return posts;
-        // save only media posts or the ones specified
+        // save only media posts or the ones specified (exclude gifs because they cannot be uploaded to instagram)
         for (const { data } of result.data.children) {
-            if ((q.accept_post_hint && data.post_hint === q.accept_post_hint) || data.post_hint === 'hosted:video' || data.post_hint === 'image') {
+            if (((q.accept_post_hint && data.post_hint === q.accept_post_hint) || data.post_hint === 'hosted:video' || data.post_hint === 'image') && !data.url.endsWith('.gif')) {
                 posts.push(RedditPost.create({ ...data, account: q.account }));
             }
         }

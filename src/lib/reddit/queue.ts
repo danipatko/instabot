@@ -14,7 +14,7 @@ export default class Queue {
     private timer: NodeJS.Timer | null;
     private onTick: (item: QueueItem) => void;
 
-    constructor(onTick: (item: QueueItem) => void) {
+    constructor(onTick: (item: QueueItem) => void | Promise<void>) {
         this.items = [];
         this.timer = null;
         this.onTick = onTick;

@@ -262,16 +262,21 @@ export default class RedditPost implements IRedditPost {
     public async download(): Promise<boolean> {
         try {
             // image
-            if (this.post_hint !== 'hosted:video') return (await this.downloadFile(this.url, this.name)) && (await this.prepareImage());
+            if (this.post_hint !== 'hosted:video') {
+                const tempFile = this.name + 'temp';
+                if ((await this.downloadFile(this.url, tempFile)) && (await this.prepareImage())) {
+                    // remove temp file
+                    fs.unlinkSync(`${tempFile}.${RedditPost.getExtension(this.url)}`);
+                    return true;
+                } else return false;
+            }
 
             // video
             if (!((await this.downloadFile(this.url, this.name + 'video')) && (await this.downloadFile(this.getAudioUrl(), this.name + 'audio')) && (await this.prepareVideo()))) {
                 return false;
             }
-            // wait and remove unnecessary files
-            await sleep(1000);
+            // remove unnecessary files
             fs.unlinkSync(path.join('public', `${this.name}video.mp4`));
-            await sleep(1000);
             fs.unlinkSync(path.join('public', `${this.name}audio.mp4`));
             return true;
         } catch (error) {
@@ -303,6 +308,10 @@ export default class RedditPost implements IRedditPost {
                     })
                     // .on('progress', (p) => Logs.info(`Converting ${this.name}: ${Math.floor(p.percent)}%`))
                     .once('end', () => res(true))
+                    .once('error', (error) => {
+                        Logs.error(`Failed to convert image '${this.name}'\n${error}`);
+                        res(false);
+                    })
                     .run();
             } catch (error) {
                 Logs.error(`Failed to convert ${this.name}\n${error}`);
@@ -321,6 +330,10 @@ export default class RedditPost implements IRedditPost {
                     .autopad(true, 'black')
                     .output(this.file)
                     .once('end', () => res(true))
+                    .on('error', (error) => {
+                        Logs.error(`Failed to convert image '${this.name}'\n${error}`);
+                        res(false);
+                    })
                     .run();
             } catch (error) {
                 Logs.error(`Failed to convert image '${this.name}'\n${error}`);
