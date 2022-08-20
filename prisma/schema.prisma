@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int     @id @default(autoincrement())
+  username  String  @unique
+  token     String
+  is_admin  Boolean @default(false)
+}
+
+model Account {
+  id              Int @id @default(autoincrement())
+
+  password        String 
+  username        String
+
+  activity_id     Int? 
+  activity        Activity? @relation(fields: [activity_id], references: [id], onDelete: SetNull)
+  
+  posts           Post[]
+}
+
+model Activity {
+  id              Int @id @default(autoincrement())
+  
+  timespan        BigInt // time before account switch
+  post_target     Int
+
+  follow_target   Int     // number of ppl to follow in a single timespan
+  follow_queue    String  // comma separated ig ids to follow
+
+  unfollow_target Int
+  unfollow_queue  String
+
+  auto_upload     Boolean @default(false)
+
+  accounts        Account[]
+  queries         Fetch[]
+}
+
+model Fetch {
+  id          Int @id @default(autoincrement())
+  activities  Activity[]
+  
+  enabled     Boolean
+  timespan    BigInt
+
+  page_count  Int
+  page_after  String
+
+  // configurables
+  q           String? // search term 
+  sub         String 
+  sort        String  // rising | hot | best | new 
+  type        String  // *.json
+  limit       Int     // posts to save
+  over_18     Boolean // nsfw
+  page_reset  Int     // reset after x pages
+}
+
+// the stolen reddit post
+model Source {
+  id Int @id @default(autoincrement())
+
+  post_id       Int? @unique
+  post          Post? @relation(fields: [post_id], references: [id], onDelete: SetNull)
+
+  video_id      Int? @unique
+  video         Video? @relation(fields: [video_id], references: [id], onDelete: SetNull)
+
+  // meta
+  url           String
+  title         String
+  author        String
+  subreddit     String
+  created_utc   BigInt
+  // rating
+  ups           Int 
+  downs         Int 
+  score         Int
+  upvote_ratio  Float
+  num_comments  Int
+  // other
+  file          String // processed video or image path
+  archived      Boolean @default(false)
+  post_hint     String
+}
+
+model Video {
+  id            Int @id @default(autoincrement())
+
+  bitrate_kbps  Int
+  duration      Int
+  is_gif        Boolean
+
+  source        Source?
+}
+
+model Post {
+  id            Int @id @default(autoincrement())
+
+  activity_id   Int?
+  activity      Account? @relation(fields: [activity_id], references: [id], onDelete: SetNull)
+
+  uploaded      Boolean @default(false)
+  caption       String
+
+  created_at    DateTime @default(now())
+  upload_index  Int
+
+  source        Source?
+}

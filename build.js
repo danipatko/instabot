@@ -1,19 +1,17 @@
-const start = Date.now();
-require('esbuild')
-    .build({
-        bundle: true,
+const esbuild = require('esbuild');
+(async () => {
+    const start = Date.now();
+
+    await esbuild.build({
         target: 'esnext',
-        format: 'cjs',
-        outfile: './dist/bundle.js',
-        external: [
-            'sqlite3',
-            'fluent-ffmpeg',
-            'fetch',
-            'instagram-private-api',
-        ],
+        outdir: 'dist',
+        // add installed packages here
+        external: ['express', '@prisma/client', 'jsonwebtoken', 'cookie-parser', 'bluebird', './dist/server/entry.mjs'],
+        bundle: true,
         platform: 'node',
         tsconfig: 'tsconfig.json',
-        entryPoints: ['./src/index.ts'],
-    })
-    .catch((e) => console.error(e))
-    .finally(() => console.log(`Done in ${Date.now() - start}ms\n`));
+        entryPoints: ['./src/server/index.ts'],
+    });
+
+    console.log(`Done in ${Date.now() - start}ms\n`);
+})();
