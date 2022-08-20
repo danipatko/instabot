@@ -32,7 +32,7 @@ model Account {
 model Activity {
   id              Int @id @default(autoincrement())
   
-  timespan        BigInt // time before account switch
+  timespan        Int // time before account switch
   post_target     Int
 
   follow_target   Int     // number of ppl to follow in a single timespan
@@ -42,6 +42,7 @@ model Activity {
   unfollow_queue  String
 
   auto_upload     Boolean @default(false)
+  last_used       DateTime @default(now())
 
   accounts        Account[]
   queries         Fetch[]
@@ -52,7 +53,7 @@ model Fetch {
   activities  Activity[]
   
   enabled     Boolean
-  timespan    BigInt
+  timespan    Int
 
   page_count  Int
   page_after  String
@@ -71,9 +72,6 @@ model Fetch {
 model Source {
   id Int @id @default(autoincrement())
 
-  post_id       Int? @unique
-  post          Post? @relation(fields: [post_id], references: [id], onDelete: SetNull)
-
   video_id      Int? @unique
   video         Video? @relation(fields: [video_id], references: [id], onDelete: SetNull)
 
@@ -82,7 +80,7 @@ model Source {
   title         String
   author        String
   subreddit     String
-  created_utc   BigInt
+  created_utc   Int
   // rating
   ups           Int 
   downs         Int 
@@ -93,6 +91,8 @@ model Source {
   file          String // processed video or image path
   archived      Boolean @default(false)
   post_hint     String
+
+  post          Post?
 }
 
 model Video {
@@ -107,9 +107,12 @@ model Video {
 
 model Post {
   id            Int @id @default(autoincrement())
+  
+  source_id     Int? @unique
+  source        Source? @relation(fields: [source_id], references: [id], onDelete: SetNull)
 
-  activity_id   Int?
-  activity      Account? @relation(fields: [activity_id], references: [id], onDelete: SetNull)
+  account_id    Int?
+  account       Account? @relation(fields: [account_id], references: [id], onDelete: SetNull)
 
   uploaded      Boolean @default(false)
   caption       String
@@ -117,5 +120,4 @@ model Post {
   created_at    DateTime @default(now())
   upload_index  Int
 
-  source        Source?
 }

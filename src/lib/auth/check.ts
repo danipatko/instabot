@@ -1,5 +1,5 @@
 import type { Parsed, CheckOptions, RequestData } from './ifs';
-import { getTokenDataCookie } from './index';
+import { getTokenDataCookie, getTokenDataExpress } from './index';
 import type { Response } from 'express';
 import { Types } from './ifs';
 
@@ -36,10 +36,10 @@ const parseMany = (data: Record<string, any>, expect: Record<string, Types | nul
 /**
  * Check requests for authentication and parsing data
  */
-const check = async <T extends Record<string, any>>({ cookie, admin, ...fields }: CheckOptions): Promise<RequestData<T>> => {
+const check = async <T extends Record<string, any>>({ req, admin, ...fields }: CheckOptions): Promise<RequestData<T>> => {
     return new Promise<RequestData<T>>(async (res, rej) => {
         // auth
-        const token = await getTokenDataCookie(cookie);
+        const token = await getTokenDataExpress(req);
         if (!token) return void rej({ code: 401, msg: 'unauthorized' });
         if (admin && !token.admin) return void rej({ code: 403, msg: 'forbidden' });
 
@@ -57,8 +57,9 @@ const check = async <T extends Record<string, any>>({ cookie, admin, ...fields }
 };
 
 const err = (res: Response) => {
-    return ({ code, msg }: { code: number; msg: string }) => {
-        res.status(code).send(msg);
+    return (error: { code: number; msg: string } | any) => {
+        if (error['code'] && error['msg']) res.status(error.code).send(error.msg);
+        else res.status(404).send('not found');
     };
 };
 

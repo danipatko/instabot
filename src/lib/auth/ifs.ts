@@ -12,7 +12,7 @@ enum Types {
 }
 
 interface CheckOptions {
-    cookie: string | null;
+    req: Request;
     admin: boolean;
     body?: Record<string, Types | null>;
     query?: Record<string, Types | null>;

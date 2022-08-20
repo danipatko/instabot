@@ -40,10 +40,10 @@ const getTokenData = async (token: string): Promise<TokenData> => {
     });
 };
 
-// const getTokenDataCookie = async (req: Request): Promise<TokenData | undefined> => {
-//     const { token } = req.cookies;
-//     if (token) return await getTokenData(token);
-// };
+const getTokenDataExpress = async (req: Request): Promise<TokenData | undefined> => {
+    const { token } = req.cookies;
+    if (token) return await getTokenData(token);
+};
 
 const getTokenDataCookie = async (cookie: string | null): Promise<TokenData | undefined> => {
     if (!cookie) return undefined;
@@ -56,6 +56,6 @@ const getTokenDataBearer = async (req: Request): Promise<TokenData | undefined> 
     if (authHeader) return await getTokenData(authHeader.split(/\s+/g)[1]); // Authorization: Bearer xxx-xxx
 };
 
-export { /*signAPIToken,*/ signSessionToken, /*getTokenDataBearer,*/ getTokenDataCookie, getToken };
+export { /*signAPIToken,*/ signSessionToken, /*getTokenDataBearer,*/ getTokenDataExpress, getTokenDataCookie, getToken };
 export * from './ifs';
 export * from './check';

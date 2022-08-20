@@ -14,9 +14,11 @@
         "db:wipe": "prisma reset dev"
     },
     "devDependencies": {
+        "@types/bluebird": "^3.5.36",
         "@types/express": "^4.17.13",
         "@types/jsonwebtoken": "^8.5.8",
         "astro": "^1.0.6",
+        "bluebird": "^3.7.2",
         "esbuild": "^0.15.5",
         "prisma": "^4.2.1"
     },
