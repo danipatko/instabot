@@ -1,6 +1,6 @@
+import ActivityCycle from '../lib/instagram/activity';
 import express from 'express';
 import router from './routes';
-import ActivityCycle from '../lib/activity';
 
 const ac = new ActivityCycle();
 

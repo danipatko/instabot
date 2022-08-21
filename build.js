@@ -6,7 +6,15 @@ const esbuild = require('esbuild');
         target: 'esnext',
         outdir: 'dist',
         // add installed packages here
-        external: ['express', '@prisma/client', 'jsonwebtoken', 'cookie-parser', 'bluebird', './dist/server/entry.mjs'],
+        external: [
+            'express',
+            'bluebird',
+            'jsonwebtoken',
+            'fluent-ffmpeg',
+            'cookie-parser',
+            '@prisma/client',
+            './dist/server/entry.mjs',
+        ],
         bundle: true,
         platform: 'node',
         tsconfig: 'tsconfig.json',

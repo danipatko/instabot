@@ -1,5 +1,5 @@
-import type { BaseActivity } from './db';
-import prisma from './db';
+import type { BaseActivity } from '../db';
+import prisma from '../db';
 import ev from 'events';
 
 interface Timespan {

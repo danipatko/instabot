@@ -61,6 +61,7 @@ model Fetch {
   // configurables
   q           String? // search term 
   sub         String 
+  time         String 
   sort        String  // rising | hot | best | new 
   type        String  // *.json
   limit       Int     // posts to save
@@ -107,7 +108,7 @@ model Video {
 
 model Post {
   id            Int @id @default(autoincrement())
-  
+
   source_id     Int? @unique
   source        Source? @relation(fields: [source_id], references: [id], onDelete: SetNull)
 
@@ -119,5 +120,4 @@ model Post {
 
   created_at    DateTime @default(now())
   upload_index  Int
-
 }

@@ -16,6 +16,10 @@ interface Pass {
     password: string;
 }
 
+interface Acc {
+    account_id: number;
+}
+
 const idp = {
     params: { id: Types.number },
 };
@@ -117,7 +121,7 @@ router.delete('/activity/:id', (req, res) => {
         .catch(err(res));
 });
 
-// POSTS
+// QUERIES
 
 router.get('/fetch', (req, res) => {
     check({ req, admin: false })
@@ -159,6 +163,57 @@ router.delete('/fetch/:id', (req, res) => {
     check<ID>({ req, admin: false, ...idp })
         .then(({ data }) => db.deleteFetch(data.id))
         .then((fetch) => res.json({ fetch }))
+        .catch(err(res));
+});
+
+// POSTS
+
+router.get('/posts', (req, res) => {
+    check({ req, admin: false })
+        .then(() => db.getUnchecked())
+        .then((posts) => res.json({ posts }))
+        .catch(err(res));
+});
+
+router.get('/posts/archive', (req, res) => {
+    check({ req, admin: false })
+        .then(() => db.getArchive())
+        .then((posts) => res.json({ posts }))
+        .catch(err(res));
+});
+
+router.get('/posts/pending', (req, res) => {
+    check({ req, admin: false })
+        .then(() => db.getPending())
+        .then((posts) => res.json({ posts }))
+        .catch(err(res));
+});
+
+router.get('/posts/uploads', (req, res) => {
+    check({ req, admin: false })
+        .then(() => db.getUploaded())
+        .then((posts) => res.json({ posts }))
+        .catch(err(res));
+});
+
+router.post('/posts/:id/upload/:account_id', (req, res) => {
+    check<ID & Acc>({ req, admin: false, params: { id: Types.number, account_id: Types.number } })
+        .then(({ data }) => db.acceptPost(data.id, data.account_id))
+        .then((post) => res.json({ post }))
+        .catch(err(res));
+});
+
+router.post('/posts/:id/archive', (req, res) => {
+    check<ID>({ req, admin: false, ...idp })
+        .then(({ data }) => db.archivePost(data.id))
+        .then((post) => res.json({ post }))
+        .catch(err(res));
+});
+
+router.delete('/posts/:id', (req, res) => {
+    check<ID>({ req, admin: false, ...idp })
+        .then(({ data }) => db.deletePost(data.id))
+        .then((ok) => res.json({ ok }))
         .catch(err(res));
 });
 
