@@ -1,11 +1,11 @@
 import type { Request, Response } from 'express';
-import type { TokenData } from './ifs';
+import type { TokenData } from './types';
 import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
 config();
 
 const createJWT = (data: TokenData | object, maxAge: string | undefined, issuer: string = 'sys'): string => {
-    const { SECRET } = import.meta.env;
+    const { SECRET } = process.env.NODE_ENV == 'production' ? process.env : import.meta.env;
     if (!SECRET) throw new Error('Could not get secret from environment.');
     return jwt.sign({ ...data }, SECRET, { ...(maxAge && { expiresIn: maxAge }), issuer });
 };
@@ -23,18 +23,15 @@ const getToken = (cookie: string): string | null => {
 
 const getTokenData = async (token: string): Promise<TokenData> => {
     return new Promise<TokenData>((res, rej) => {
-        const { SECRET } = import.meta.env;
+        const { SECRET } = process.env.NODE_ENV == 'production' ? process.env : import.meta.env;
         if (!SECRET) throw new Error('Cannot find secret in environment.');
 
         try {
             jwt.verify(token, SECRET, (err, data) => {
-                console.log(err);
-                console.log(data);
-                if (err || typeof data == 'string') rej('error or data was a strign');
+                if (err || typeof data == 'string') rej('Error or data was a string.');
                 res(data as TokenData);
             });
         } catch (error) {
-            console.error(`Invalid server side secret.`);
             rej('Invalid client side secret.');
         }
     });
@@ -57,5 +54,5 @@ const getTokenDataBearer = async (req: Request): Promise<TokenData | undefined> 
 };
 
 export { /*signAPIToken,*/ signSessionToken, /*getTokenDataBearer,*/ getTokenDataExpress, getTokenDataCookie, getToken };
-export * from './ifs';
+export * from './types';
 export * from './check';

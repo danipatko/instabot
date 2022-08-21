@@ -11,7 +11,7 @@
         "preview": "astro preview",
         "astro": "astro",
         "db:migrate": "prisma migrate dev --name",
-        "db:wipe": "prisma reset dev"
+        "db:wipe": "prisma migrate reset dev"
     },
     "devDependencies": {
         "@types/bluebird": "^3.5.36",

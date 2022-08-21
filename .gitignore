@@ -23,4 +23,7 @@ pnpm-debug.log*
 *.db-journal
 prisma/migrations/
 
+public/*.mp4
+public/*.jpg
+
 .misc

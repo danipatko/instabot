@@ -4,26 +4,25 @@ import { promisify } from 'util';
 
 const rm = promisify(fs.rm);
 
-const getUnchecked = async () =>
-    prisma.source.findMany({ include: { video: true }, where: { archived: false }, orderBy: { ups: 'desc' } });
+const getUnchecked = async () => prisma.source.findMany({ where: { archived: false }, orderBy: { ups: 'desc' } });
 
 const getArchive = async () =>
     prisma.source.findMany({
-        include: { video: true, post: true },
+        include: { post: true },
         where: { archived: true },
         orderBy: { ups: 'desc' },
     });
 
 const getPending = async () =>
     prisma.post.findMany({
-        include: { source: { include: { video: true } } },
+        include: { source: true },
         where: { uploaded: false },
         orderBy: { upload_index: 'asc' },
     });
 
 const getUploaded = async () =>
     prisma.post.findMany({
-        include: { source: { include: { video: true } } },
+        include: { source: true },
         where: { uploaded: true },
         orderBy: { created_at: 'desc' },
     });

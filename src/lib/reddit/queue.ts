@@ -9,9 +9,13 @@ export interface QueueItem {
 }
 
 class Queue {
-    public queue: QueueItem[] = [];
+    private queue: QueueItem[] = [];
     private timer: NodeJS.Timer | null = null;
     public events = new ev.EventEmitter();
+
+    constructor() {
+        this.start();
+    }
 
     // add new item from database
     public async enable(id: number) {
@@ -45,10 +49,9 @@ class Queue {
     private tick() {
         const item = this.queue.shift();
         if (!item) return;
-        console.log(`Fetch called for ${item.name} (${item.id})`);
-        this.events.emit('fetch', item);
-
         this.queue.push({ ...item, time: new Date(Date.now() + item.timespan * 60 * 60 * 1000) });
+
+        this.events.emit('fetch', item.id);
         this.refresh();
     }
 
@@ -62,7 +65,7 @@ class Queue {
         this.timer = setTimeout(() => this.tick(), next.time.getTime() - Date.now());
     }
 
-    public async loadAll() {
+    private async start() {
         const all = await prisma.fetch.findMany({
             select: { id: true, timespan: true, sub: true, type: true },
             where: { enabled: true },
@@ -74,7 +77,14 @@ class Queue {
                 name: `r/${query.sub}/${query.type}`,
             });
         }
+        console.log(`Loaded ${this.queue.length} queries from database. Refreshing...`);
         this.refresh();
+    }
+
+    public get state() {
+        return {
+            queue: this.queue,
+        };
     }
 }
 

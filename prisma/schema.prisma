@@ -53,7 +53,7 @@ model Fetch {
   activities  Activity[]
   
   enabled     Boolean
-  timespan    Int
+  timespan    Float
 
   page_count  Int
   page_after  String
@@ -73,11 +73,9 @@ model Fetch {
 model Source {
   id Int @id @default(autoincrement())
 
-  video_id      Int? @unique
-  video         Video? @relation(fields: [video_id], references: [id], onDelete: SetNull)
-
   // meta
   url           String
+  name          String
   title         String
   author        String
   subreddit     String
@@ -94,16 +92,6 @@ model Source {
   post_hint     String
 
   post          Post?
-}
-
-model Video {
-  id            Int @id @default(autoincrement())
-
-  bitrate_kbps  Int
-  duration      Int
-  is_gif        Boolean
-
-  source        Source?
 }
 
 model Post {

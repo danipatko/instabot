@@ -9,7 +9,15 @@ const cookie = Astro.request.headers.get('cookie');
 // 	console.log(v)
 // }).catch((e) => console.log(e));
 
-getTokenDataCookie(cookie).then(() => {}).catch((e) => console.log(e));
+return getTokenDataCookie(cookie)
+	.then((asd) => { 
+		return {
+			props:{
+				foo: '4435245rtfg'
+			}
+		}
+	})
+	.catch((e) => Astro.redirect('/login'));
 
 
 ---
@@ -18,7 +26,7 @@ getTokenDataCookie(cookie).then(() => {}).catch((e) => console.log(e));
 	<main>
 		<h1>Welcome to <span class="text-gradient">Astro</span></h1>
 		<p class="instructions">
-			Check out the <code>src/pages</code> directory to get started.<br />
+			{JSON.stringify(props)}
 			<strong>Code Challenge:</strong> Tweak the "Welcome to Astro" message above.
 		</p>
 		<ul role="list" class="link-card-grid">

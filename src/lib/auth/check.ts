@@ -1,7 +1,7 @@
-import type { Parsed, CheckOptions, RequestData } from './ifs';
+import type { Parsed, CheckOptions, RequestData } from './types';
 import { getTokenDataCookie, getTokenDataExpress } from './index';
 import type { Response } from 'express';
-import { Types } from './ifs';
+import { Types } from './types';
 
 const parse = (val: any, T: Types | null): boolean | number | string | null => {
     switch (T) {

@@ -1,61 +1,18 @@
-import type { Fetch } from '@prisma/client';
+import { convert, RedditMediaPost, RedditQueryResult } from './types';
+import type { Fetch, Source } from '@prisma/client';
 import ffmpeg from 'fluent-ffmpeg';
+import { Promise } from 'bluebird';
 import { promisify } from 'util';
 import fetch from 'node-fetch';
 import path from 'path/posix';
 import prisma from '../db';
 import fs from 'fs';
-
 const SAVE_PATH = 'public';
 
 const write = promisify(fs.writeFile);
 const rm = promisify(fs.rm);
 
 ffmpeg.setFfmpegPath('ffmpeg');
-
-interface RedditVideo {
-    width: number;
-    height: number;
-    is_gif: boolean;
-    duration: number; // in seconds
-    bitrate_kbps: number;
-    fallback_url: string;
-}
-
-// fetched from the reddit API
-interface RedditPostBase {
-    ups: number;
-    name: string;
-    downs: number;
-    score: number; // = ups - downs
-    title: string;
-    author: string;
-    over_18: boolean;
-    is_video: boolean;
-    subreddit: string;
-    post_hint:
-        | 'hosted:video' // normal video
-        | 'rich:video' // e.g. a youtube embed
-        | 'image' // simple image
-        | 'self'; // text
-    created_utc: number;
-    upvote_ratio: number;
-    num_comments: number;
-}
-
-interface RedditMediaPost extends RedditPostBase {
-    url: string;
-    media: null | { reddit_video: RedditVideo };
-    account?: string;
-    secure_media: null | { reddit_video: RedditVideo };
-}
-
-interface RedditQueryResult {
-    data: {
-        dist: number;
-        children: { kind: string; data: RedditMediaPost }[];
-    };
-}
 
 const buildUrl = (f: Fetch) => {
     let url = 'https://reddit.com/r/' + f.sub + '/';
@@ -73,58 +30,52 @@ const buildUrl = (f: Fetch) => {
     return url;
 };
 
-const fetchPosts = async (id: number) => {
+const fetchPosts = async (id: number): Promise<Source[] | Source | null | null[]> => {
     return prisma.fetch
         .findFirst({ where: { id } })
         .then((data) => {
             if (!data) throw new Error('Query not found.');
+            console.log(buildUrl(data));
             return fetch(buildUrl(data), { method: 'GET', headers: { 'Content-Type': 'application/json' } });
         })
         .then((res) => {
             if (!res.ok) throw new Error(`Request returned code ${res.status} - ${res.statusText}`);
             return res.json() as Promise<RedditQueryResult>;
         })
-        .then(async ({ data }) => {
-            for (const post of data.children) {
-                await processPost(post.data);
-            }
-        })
+        .then(({ data }) => Promise.map(data.children, ({ data }) => processPost(data)))
+        .then((posts) =>
+            // I know this is anti-pattern, but for some reason,
+            // the prisma.create function is 'not thenable' and
+            // throws an error
+            Promise.map(posts, async (post) => await prisma.source.create({ data: post }))
+        )
         .catch((e) => {
             console.log(`Failed to fetch posts from reddit.\n${e}`);
             return null;
         });
 };
 
-const processPost = async (post: RedditMediaPost): Promise<boolean> => {
+const processPost = async (post: RedditMediaPost) => {
+    console.log(`Processing ${post.name}`);
     if (post.post_hint === 'image') {
-        return dlImage(post.url, post.name)
-            .then(() => true)
-            .catch((e) => {
-                console.error(e);
-                return false;
-            });
+        return dlImage(post.url, post.name).then(() => ({ ...convert(post), file: post.name + '.jpg' }));
     } else if (post.post_hint === 'hosted:video' && !post.url.endsWith('.gif')) {
-        return dlVideo(post.url, post.name)
-            .then(() => true)
-            .catch((e) => {
-                console.error(e);
-                return false;
-            });
+        const url = videoUrl(post);
+        if (!url) throw new Error('Incompatible post.');
+        post.url = url;
+        return dlVideo(post.url, post.name).then(() => ({ ...convert(post), file: post.name + '.mp4' }));
     }
-    return false;
+    throw new Error('Incompatible post.');
 };
 
-const dl = async (url: string, name: string): Promise<void> => {
+const dl = async (url: string, _path: string): Promise<void> => {
+    console.log(`Downloading ${url} to ${_path}`);
     return fetch(url)
         .then((res) => {
-            if (!res.ok) throw new Error(`Download failed: request returned code ${res.status} - ${res.statusText}`);
-            return res.arrayBuffer();
+            if (res.ok) return res.arrayBuffer();
+            throw new Error(`Download failed: request returned code ${res.status} - ${res.statusText}`);
         })
-        .then((buf) => write(path.join(SAVE_PATH, name), Buffer.from(buf)));
-    // .catch((e) => {
-    //     console.log(`Failed to download ${url}.\n${e}`);
-    //     return false;
-    // });
+        .then((buf) => write(_path, Buffer.from(buf)));
 };
 
 const getExt = (url: string): string | null => {
@@ -134,7 +85,35 @@ const getExt = (url: string): string | null => {
 
 const audioUrl = (url: string) => url.replaceAll(/DASH_\d{2,5}/gm, 'DASH_audio');
 
+const videoUrl = (post: RedditMediaPost): string | undefined => {
+    if (post.media) return post.media.reddit_video.fallback_url;
+    else if (post.secure_media) return post.secure_media.reddit_video.fallback_url;
+};
+
+const dlImage = async (url: string, name: string) => {
+    const ext = getExt(url);
+    if (!ext) throw new Error('Invalid file url');
+    const input = path.join(SAVE_PATH, `${name}temp.${ext}`);
+    const output = path.join(SAVE_PATH, `${name}.${ext}`);
+    return dl(url, input).then(() => processImage(input, output));
+};
+
+const dlVideo = async (url: string, name: string) => {
+    const ext = getExt(url);
+    if (!ext) throw new Error('Invalid file url');
+
+    const inputV = path.join(SAVE_PATH, `${name}video.${ext}`);
+    const inputA = path.join(SAVE_PATH, `${name}audio.${ext}`);
+    const output = path.join(SAVE_PATH, name + '.mp4');
+    const cover = path.join(SAVE_PATH, name + 'cover.jpg');
+
+    return dl(url, inputV)
+        .then(() => dl(audioUrl(url), inputA))
+        .then(() => processVideo(inputV, inputA, output, cover));
+};
+
 const processImage = async (input: string, output: string, removeInput = true) => {
+    console.log(`Converting image (${input} => ${output})`);
     return new Promise<void>((res, rej) =>
         ffmpeg()
             .input(input)
@@ -146,19 +125,17 @@ const processImage = async (input: string, output: string, removeInput = true) =
                 if (removeInput) rm(input).then(res).catch(rej);
                 else res();
             })
-            .on('error', (e) => {
-                console.error(`Image conversion (${input} => ${output}) failed:\n${e}`);
-                rej();
-            })
+            .on('error', (e) => rej(e))
             .run()
     );
 };
 
 const processVideo = async (inputV: string, inputA: string, output: string, cover: string, removeInput = true) => {
+    console.log(`Converting video (${inputV} => ${output})`);
     return new Promise<void>((res, rej) =>
         ffmpeg()
             .input(inputV)
-            .size('720x720') // 1:1 ratio
+            .size('480x480') // 1:1 ratio
             .autopad(true, 'black') // create a black padding around the video
             .videoBitrate('3000k') // 3500 is recommended
             .input(inputA)
@@ -168,17 +145,17 @@ const processVideo = async (inputV: string, inputA: string, output: string, cove
             // create a cover image
             .takeScreenshots({
                 count: 1,
-                timemarks: ['0.0'],
+                timemarks: ['0.1'],
                 filename: cover,
             })
-            // .on('progress', (p) => Logs.info(`Converting ${this.name}: ${Math.floor(p.percent)}%`))
             .once('end', () => {
-                if (removeInput)
+                if (removeInput) {
+                    console.log(`Removing ${inputA} and ${inputV}`);
                     rm(inputA)
                         .then(() => rm(inputV))
                         .then(res)
                         .catch(rej);
-                else res();
+                } else res();
             })
             .once('error', (e) => {
                 console.error(`Video conversion (${inputV} => ${output}) failed:\n${e}`);
@@ -186,32 +163,6 @@ const processVideo = async (inputV: string, inputA: string, output: string, cove
             })
             .run()
     );
-};
-
-const dlImage = async (url: string, name: string) => {
-    const ext = getExt(url);
-    if (!ext) throw new Error('Invalid file url');
-    const input = `${name}temp.${ext}`;
-    const output = `${name}.${ext}`;
-    return dl(url, input).then(() => processImage(input, output));
-    // .catch((e) => { // catch it top level
-    //     console.error(e);
-    // });
-};
-
-const dlVideo = async (url: string, name: string) => {
-    const ext = getExt(url);
-    if (!ext) throw new Error('Invalid file url');
-
-    const inputV = `${name}video.${ext}`;
-    const inputA = `${name}audio.${ext}`;
-
-    return dl(url, inputV)
-        .then(() => dl(audioUrl(url), inputA))
-        .then(() => processVideo(inputV, inputA, name + '.mp4', name + 'cover.jpg'));
-    // .catch((e) => { // catch it top level
-    //     console.error(e);
-    // });
 };
 
 export { fetchPosts };

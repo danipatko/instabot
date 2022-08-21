@@ -1,6 +1,6 @@
 const esbuild = require('esbuild');
 (async () => {
-    const start = Date.now();
+    console.time('Build time');
 
     await esbuild.build({
         target: 'esnext',
@@ -21,5 +21,5 @@ const esbuild = require('esbuild');
         entryPoints: ['./src/server/index.ts'],
     });
 
-    console.log(`Done in ${Date.now() - start}ms\n`);
+    console.timeEnd('Build time');
 })();
