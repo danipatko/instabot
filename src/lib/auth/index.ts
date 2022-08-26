@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 config();
 
 const createJWT = (data: TokenData | object, maxAge: string | undefined, issuer: string = 'sys'): string => {
-    const { SECRET } = process.env.NODE_ENV == 'production' ? process.env : import.meta.env;
+    const { SECRET } = process.env;
     if (!SECRET) throw new Error('Could not get secret from environment.');
     return jwt.sign({ ...data }, SECRET, { ...(maxAge && { expiresIn: maxAge }), issuer });
 };
@@ -23,7 +23,7 @@ const getToken = (cookie: string): string | null => {
 
 const getTokenData = async (token: string): Promise<TokenData> => {
     return new Promise<TokenData>((res, rej) => {
-        const { SECRET } = process.env.NODE_ENV == 'production' ? process.env : import.meta.env;
+        const { SECRET } = process.env;
         if (!SECRET) throw new Error('Cannot find secret in environment.');
 
         try {
@@ -37,14 +37,9 @@ const getTokenData = async (token: string): Promise<TokenData> => {
     });
 };
 
-const getTokenDataExpress = async (req: Request): Promise<TokenData | undefined> => {
+const getTokenCookie = async (req: Request): Promise<TokenData | undefined> => {
+    if (!req.cookies) return;
     const { token } = req.cookies;
-    if (token) return await getTokenData(token);
-};
-
-const getTokenDataCookie = async (cookie: string | null): Promise<TokenData | undefined> => {
-    if (!cookie) return undefined;
-    const token = getToken(cookie);
     if (token) return await getTokenData(token);
 };
 
@@ -53,6 +48,6 @@ const getTokenDataBearer = async (req: Request): Promise<TokenData | undefined> 
     if (authHeader) return await getTokenData(authHeader.split(/\s+/g)[1]); // Authorization: Bearer xxx-xxx
 };
 
-export { /*signAPIToken,*/ signSessionToken, /*getTokenDataBearer,*/ getTokenDataExpress, getTokenDataCookie, getToken };
+export { /*signAPIToken,*/ signSessionToken, /*getTokenDataBearer,*/ getTokenCookie, getToken };
 export * from './types';
 export * from './check';

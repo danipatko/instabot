@@ -13,7 +13,7 @@ enum Types {
 
 interface CheckOptions {
     req: Request;
-    admin: boolean;
+    level: number; // 0 - any, 1 - logged in, 2 - admin
     body?: Record<string, Types | null>;
     query?: Record<string, Types | null>;
     params?: Record<string, Types | null>;

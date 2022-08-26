@@ -1,3 +1,5 @@
+// NOTE: for whatever reason, a build.js file in the project dir will cause remix to crash.
+
 const esbuild = require('esbuild');
 (async () => {
     console.time('Build time');
@@ -7,17 +9,21 @@ const esbuild = require('esbuild');
         outdir: 'dist',
         // add installed packages here
         external: [
+            'morgan',
             'express',
             'bluebird',
+            'esbuild',
+            'compression',
             'jsonwebtoken',
             'fluent-ffmpeg',
             'cookie-parser',
             '@prisma/client',
-            './dist/server/entry.mjs',
+            '@remix-run/node',
+            '@remix-run/express',
         ],
         bundle: true,
         platform: 'node',
-        tsconfig: 'tsconfig.json',
+        tsconfig: 'tsconfig.server.json',
         entryPoints: ['./src/server/index.ts'],
     });
 

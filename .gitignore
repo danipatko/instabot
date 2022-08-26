@@ -19,6 +19,9 @@ pnpm-debug.log*
 # macOS-specific files
 .DS_Store
 
+.cache
+build/
+
 *.db
 *.db-journal
 prisma/migrations/
@@ -27,3 +30,4 @@ public/*.mp4
 public/*.jpg
 
 .misc
+content/*

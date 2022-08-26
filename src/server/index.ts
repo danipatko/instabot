@@ -1,28 +1,57 @@
+import { createRequestHandler } from '@remix-run/express';
 import ActivityCycle from '../lib/instagram/activity';
 import { fetchPosts } from '../lib/reddit/fetch';
 import Queue from '../lib/reddit/queue';
+import compression from 'compression';
 import prisma from '../lib/db';
 import express from 'express';
 import router from './routes';
-
-// const q = new Queue();
-// q.events.on('fetch', (id) => {
-//     console.log('Fetch emitted');
-//     // fetchPosts(id);
-// });
-
-const ac = new ActivityCycle();
-ac.events.on('post', () => console.log('post'));
-ac.events.on('follow', () => console.log('follow'));
-ac.events.on('unfollow', () => console.log('unfollow'));
-ac.events.on('login', () => console.log('login'));
-
-ac.start();
+import logger from 'morgan';
+import path from 'path/posix';
 
 const app = express();
 
-app.use('/', express.static('./dist/client/'));
+// middleware
+app.use(compression());
+app.use(logger('dev'));
+app.disable('x-powered-by');
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
+// static
+app.use('/content', express.static('./content/'));
+app.use('/build', express.static('public/build', { immutable: true, maxAge: '1y' }));
+app.use(express.static('public', { maxAge: '1h' }));
+
+// remix
+const BUILD_DIR = path.join(process.cwd(), 'build');
+
+app.all(
+    '*',
+    process.env.NODE_ENV === 'development'
+        ? (req, res, next) => {
+              purgeRequireCache();
+
+              return createRequestHandler({
+                  build: require(BUILD_DIR),
+                  mode: process.env.NODE_ENV,
+              })(req, res, next);
+          }
+        : createRequestHandler({
+              build: require(BUILD_DIR),
+              mode: process.env.NODE_ENV,
+          })
+);
+
+function purgeRequireCache() {
+    for (const key in require.cache) {
+        if (key.startsWith(BUILD_DIR)) {
+            delete require.cache[key];
+        }
+    }
+}
+
+// misc
 app.get('/test', async (req, res) => {
     const r = await fetchPosts(1);
     res.json(r);
@@ -48,16 +77,8 @@ app.get('/pog', async (req, res) => {
     res.send('ok ' + id);
 });
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+// routes
+app.use('/api', router);
 
-// @ts-ignore
-import('./server/entry.mjs')
-    .then(({ handler }) => {
-        app.use(handler);
-    })
-    .catch((e) => console.log(`Cannot set astro middleware:\n${e}`));
-
-app.use(router);
-
+// entry
 app.listen(3000, '0.0.0.0', () => console.log('Server listening on http://0.0.0.0:3000\n'));

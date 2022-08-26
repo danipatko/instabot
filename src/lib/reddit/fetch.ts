@@ -83,7 +83,7 @@ const getExt = (url: string): string | null => {
     return last ? last.split('?')[0] : null;
 };
 
-const audioUrl = (url: string) => url.replaceAll(/DASH_\d{2,5}/gm, 'DASH_audio');
+const audioUrl = (url: string) => url.replace(/DASH_\d{2,5}/gm, 'DASH_audio');
 
 const videoUrl = (post: RedditMediaPost): string | undefined => {
     if (post.media) return post.media.reddit_video.fallback_url;

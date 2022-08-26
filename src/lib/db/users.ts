@@ -9,6 +9,7 @@ const deleteUser = async (id: number) => await prisma.user.delete({ select: { id
 
 const loginUser = async (req: Request, res: Response) => {
     const userCount = await prisma.user.count();
+    console.log('usercount is ' + userCount);
     if (userCount === 0) {
         const { id } = await prisma.user.create({
             select: { id: true },

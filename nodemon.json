@@ -1,6 +1,6 @@
 {
-    "quiet": true,
+    "quiet": false,
     "watch": ["src/**/*"],
-    "ext": "ts,js,astro",
-    "exec": "npm run build:all && node dist/index.js"
+    "ext": "ts,js",
+    "exec": "node server.build.js && node dist/index.js"
 }
