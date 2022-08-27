@@ -11,4 +11,18 @@
     a {
         -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
     }
+
+    .fadein {
+        animation: fadein 500ms ease-in;
+    }
+
+    @keyframes fadein {
+        from {
+            @apply opacity-0;
+        }
+        ,
+        to {
+            @apply opacity-100;
+        }
+    }
 }
