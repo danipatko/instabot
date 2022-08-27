@@ -1,24 +1,17 @@
+import { LoaderArgs, redirect, Response } from '@remix-run/node';
+import Switch from '~/components/Switch';
+import { getToken } from '~/session.server';
+
+export async function loader({ request }: LoaderArgs) {
+    const session = await getToken(request);
+    if (!session) return redirect('/login');
+    return null;
+}
+
 export default function Index() {
     return (
         <div style={{ fontFamily: 'system-ui, sans-serif', lineHeight: '1.4' }}>
-            <h1>BBBBB</h1>
-            <ul>
-                <li>
-                    <a target="_blank" href="https://remix.run/tutorials/blog" rel="noreferrer">
-                        15m Quickstart Blog Tutorial
-                    </a>
-                </li>
-                <li>
-                    <a target="_blank" href="https://remix.run/tutorials/jokes" rel="noreferrer">
-                        Deep Dive Jokes App Tutorial
-                    </a>
-                </li>
-                <li>
-                    <a target="_blank" href="https://remix.run/docs" rel="noreferrer">
-                        Remix Docs
-                    </a>
-                </li>
-            </ul>
+            <Switch value={false} onClick={(s) => console.log(s)}></Switch>
         </div>
     );
 }

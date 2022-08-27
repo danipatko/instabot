@@ -5,7 +5,7 @@ import Queue from '../lib/reddit/queue';
 import compression from 'compression';
 import prisma from '../lib/db';
 import express from 'express';
-import router from './routes';
+// import router from './routes';
 import logger from 'morgan';
 import path from 'path/posix';
 
@@ -15,8 +15,8 @@ const app = express();
 app.use(compression());
 app.use(logger('dev'));
 app.disable('x-powered-by');
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+// app.use(express.json());
 
 // static
 app.use('/content', express.static('./content/'));
@@ -78,7 +78,7 @@ app.get('/pog', async (req, res) => {
 });
 
 // routes
-app.use('/api', router);
+// app.use('/api', router);
 
 // entry
 app.listen(3000, '0.0.0.0', () => console.log('Server listening on http://0.0.0.0:3000\n'));
