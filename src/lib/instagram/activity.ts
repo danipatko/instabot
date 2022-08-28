@@ -1,4 +1,4 @@
-import type { BaseActivity } from '../db';
+import type { BaseActivity } from '../db/activity';
 import prisma from '../db';
 import ev from 'events';
 
@@ -77,14 +77,16 @@ class ActivityCycle {
     private calculateTimespan() {
         if (!this.currentActivity) return void console.log('No current activity.');
         const ts = this.currentActivity.timespan;
+        console.log(ts);
+        console.log(this.currentActivity.follow_target + 1);
         this.timespan = {
             time: ts,
             posts: 0,
             follows: 0,
             unfollows: 0,
-            postInterval: Math.floor(ts / this.currentActivity.post_target + 1),
-            followInterval: Math.floor(ts / this.currentActivity.follow_target + 1),
-            unfollowInterval: Math.floor(ts / this.currentActivity.unfollow_target + 1),
+            postInterval: ts / (this.currentActivity.post_target + 1),
+            followInterval: ts / (this.currentActivity.follow_target + 1),
+            unfollowInterval: ts / (this.currentActivity.unfollow_target + 1),
         };
     }
 
@@ -95,7 +97,7 @@ class ActivityCycle {
     }
 
     private check() {
-        if (!this.timespan) return void console.log('No timespan.');
+        if (!this.timespan) return void console.log(`[${new Date().toLocaleTimeString()}] No timespan.`);
         const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
 
         if (elapsed > this.timespan.time * 1000) {
@@ -151,6 +153,20 @@ class ActivityCycle {
         this.halted = false;
         this.enabled = false;
         if (this.interval) clearInterval(this.interval);
+    }
+
+    public get state() {
+        return {
+            halted: this.halted,
+            enabled: this.enabled,
+            account: this.currentAccount?.username,
+            ...(this.timespan && {
+                ...this.timespan,
+                postInterval: this.timespan.postInterval.toFixed(2),
+                followInterval: this.timespan.followInterval.toFixed(2),
+                unfollowInterval: this.timespan.unfollowInterval.toFixed(2),
+            }),
+        };
     }
 }
 

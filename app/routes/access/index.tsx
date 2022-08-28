@@ -14,6 +14,9 @@ export async function loader({ request }: LoaderArgs) {
 }
 
 export async function action({ request }: ActionArgs) {
+    const token = await getToken(request);
+    if (!token) return redirect('/login');
+
     const fd = await request.formData().catch(() => null);
     if (!fd) return json({ message: `Invalid formdata.` });
     const username = fd.get('username');

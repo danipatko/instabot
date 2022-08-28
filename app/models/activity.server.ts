@@ -22,8 +22,8 @@ const getAccounts = async () => ({
 const upsertAccount = async (username: string, password: string, activity_id: number, id: number) =>
     prisma.account
         .upsert({
-            update: { username, password, ...(!isNaN(activity_id) && { activity_id }) },
-            create: { username, password, ...(!isNaN(activity_id) && { activity_id }) },
+            update: { username, password, activity_id: isNaN(activity_id) ? null : activity_id },
+            create: { username, password, activity_id: isNaN(activity_id) ? null : activity_id },
             where: { ...(!isNaN(id) && { id }) },
         })
         .then(() => true)
@@ -35,11 +35,43 @@ const deleteAccount = async (id: number) =>
         .then(() => true)
         .catch(() => false);
 
-const createActivity = async (data: Activity) => await prisma.activity.create({ data: { ...data } });
+const getActivities = () =>
+    prisma.activity.findMany({ include: { accounts: { select: { username: true } } }, orderBy: { last_used: 'desc' } });
+
+const upsertActivity = async (
+    id: number,
+    follow_target: number,
+    unfollow_target: number,
+    post_target: number,
+    timespan: number,
+    auto_upload: boolean
+) => {
+    if (isNaN(timespan) || isNaN(post_target) || isNaN(follow_target) || isNaN(unfollow_target)) return false;
+    return await prisma.activity
+        .upsert({
+            create: {
+                timespan,
+                last_used: new Date(),
+                post_target,
+                auto_upload,
+                follow_queue: '',
+                follow_target,
+                unfollow_queue: '',
+                unfollow_target,
+            },
+            update: {
+                timespan,
+                auto_upload,
+                post_target,
+                follow_target,
+                unfollow_target,
+            },
+            where: { ...(!isNaN(id) && { id }) },
+        })
+        .then(() => true)
+        .catch(() => false);
+};
 
 const deleteActivity = async (id: number) => await prisma.activity.delete({ where: { id } });
 
-const updateActivity = async (id: number, data: Partial<Activity>) =>
-    await prisma.activity.update({ data: { ...data }, where: { id } });
-
-export { getAccounts, upsertAccount, deleteAccount, createActivity, deleteActivity, updateActivity };
+export { getAccounts, upsertAccount, deleteAccount, getActivities, upsertActivity, deleteActivity };
