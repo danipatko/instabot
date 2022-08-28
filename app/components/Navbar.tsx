@@ -77,13 +77,19 @@ export default function Navbar() {
                             <div className="mt-6">
                                 <nav className="grid gap-y-8">
                                     <a href="/" className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
-                                        <span className="ml-3 text-base font-medium text-gray-900">Home</span>
+                                        <span className="ml-3 text-base font-medium text-gray-900">
+                                            <span className="text-indigo-700 text-xl">&#8250;</span> Home
+                                        </span>
                                     </a>
                                     <a href="/access" className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
-                                        <span className="ml-3 text-base font-medium text-gray-900">Access</span>
+                                        <span className="ml-3 text-base font-medium text-gray-900">
+                                            <span className="text-indigo-700 text-xl">&#8250;</span> Access
+                                        </span>
                                     </a>
                                     <a href="/posts" className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
-                                        <span className="ml-3 text-base font-medium text-gray-900">Posts</span>
+                                        <span className="ml-3 text-base font-medium text-gray-900">
+                                            <span className="text-indigo-700 text-xl">&#8250;</span> Posts
+                                        </span>
                                     </a>
                                 </nav>
                             </div>

@@ -1,9 +1,8 @@
-import type { Source } from '@prisma/client';
-
 interface RedditVideo {
     width: number;
     height: number;
     is_gif: boolean;
+    dash_url: string;
     duration: number; // in seconds
     bitrate_kbps: number;
     fallback_url: string;
@@ -44,10 +43,11 @@ interface RedditQueryResult {
     };
 }
 
-const convert = (_: RedditMediaPost) => {
+const convert = (_: RedditMediaPost, dash_url?: string) => {
     return {
         ups: _.ups,
         url: _.url,
+        ...(dash_url && { dash_url }),
         file: '',
         name: _.name,
         downs: _.downs,

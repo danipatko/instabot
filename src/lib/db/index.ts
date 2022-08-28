@@ -1,14 +1,30 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+let prisma: PrismaClient;
 
-console.log('Connect called');
-prisma.$connect();
+declare global {
+    var __db__: PrismaClient;
+}
+
+// prevent creating multiple instances of prisma client in dev mode
+if (process.env.NODE_ENV === 'production') {
+    prisma = getClient();
+} else {
+    if (!global.__db__) {
+        global.__db__ = getClient();
+    }
+    prisma = global.__db__;
+}
+
+function getClient() {
+    const client = new PrismaClient();
+    client.$connect();
+
+    return client;
+}
 
 export default prisma;
 
-const test = async () => await prisma.user.findMany();
-export { test };
 // export * from './accounts';
 // export * from './activity';
 // export * from './users';

@@ -7,11 +7,11 @@ import fetch from 'node-fetch';
 import path from 'path/posix';
 import prisma from '../db';
 import fs from 'fs';
-const SAVE_PATH = 'public';
+
+const SAVE_PATH = 'content';
 
 const write = promisify(fs.writeFile);
 const rm = promisify(fs.rm);
-
 ffmpeg.setFfmpegPath('ffmpeg');
 
 const buildUrl = (f: Fetch) => {
@@ -31,41 +31,48 @@ const buildUrl = (f: Fetch) => {
 };
 
 const fetchPosts = async (id: number): Promise<Source[] | Source | null | null[]> => {
-    return prisma.fetch
-        .findFirst({ where: { id } })
-        .then((data) => {
-            if (!data) throw new Error('Query not found.');
-            console.log(buildUrl(data));
-            return fetch(buildUrl(data), { method: 'GET', headers: { 'Content-Type': 'application/json' } });
-        })
-        .then((res) => {
-            if (!res.ok) throw new Error(`Request returned code ${res.status} - ${res.statusText}`);
-            return res.json() as Promise<RedditQueryResult>;
-        })
-        .then(({ data }) => Promise.map(data.children, ({ data }) => processPost(data)))
-        .then((posts) =>
-            // I know this is anti-pattern, but for some reason,
-            // the prisma.create function is 'not thenable' and
-            // throws an error
-            Promise.map(posts, async (post) => await prisma.source.create({ data: post }))
-        )
-        .catch((e) => {
-            console.log(`Failed to fetch posts from reddit.\n${e}`);
-            return null;
-        });
+    return (
+        prisma.fetch
+            .findFirst({ where: { id } })
+            .then((data) => {
+                if (!data) throw new Error('Query not found.');
+                console.log(buildUrl(data));
+                return fetch(buildUrl(data), { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+            })
+            .then((res) => {
+                if (!res.ok) throw new Error(`Request returned code ${res.status} - ${res.statusText}`);
+                return res.json() as Promise<RedditQueryResult>;
+            })
+            // download and convert only posts marked for upload
+            .then(({ data }) => Promise.map(data.children, ({ data }) => validatePost(data)))
+            .then((posts) =>
+                // I know this is anti-pattern, but for some reason,
+                // the prisma.create function is 'not thenable' and
+                // throws an error
+                Promise.map(posts, async (post) => await prisma.source.create({ data: post }))
+            )
+            .catch((e) => {
+                console.log(`Failed to fetch posts from reddit.\n${e}`);
+                return null;
+            })
+    );
 };
 
-const processPost = async (post: RedditMediaPost) => {
-    console.log(`Processing ${post.name}`);
+const validatePost = async (post: RedditMediaPost) => {
     if (post.post_hint === 'image') {
-        return dlImage(post.url, post.name).then(() => ({ ...convert(post), file: post.name + '.jpg' }));
+        return { ...convert(post), file: post.name + '.jpg' };
     } else if (post.post_hint === 'hosted:video' && !post.url.endsWith('.gif')) {
-        const url = videoUrl(post);
-        if (!url) throw new Error('Incompatible post.');
-        post.url = url;
-        return dlVideo(post.url, post.name).then(() => ({ ...convert(post), file: post.name + '.mp4' }));
+        const media = videoUrl(post);
+        if (!media) throw new Error('Incompatible post.');
+        post.url = media.url;
+        return { ...convert(post, media.dash_url), file: post.name + '.mp4' };
     }
     throw new Error('Incompatible post.');
+};
+
+const processPost = async (post: Source) => {
+    console.log(`Processing ${post.name}`);
+    return post.post_hint === 'image' ? dlImage(post.url, post.name) : dlVideo(post.url, post.name);
 };
 
 const dl = async (url: string, _path: string): Promise<void> => {
@@ -85,9 +92,11 @@ const getExt = (url: string): string | null => {
 
 const audioUrl = (url: string) => url.replace(/DASH_\d{2,5}/gm, 'DASH_audio');
 
-const videoUrl = (post: RedditMediaPost): string | undefined => {
-    if (post.media) return post.media.reddit_video.fallback_url;
-    else if (post.secure_media) return post.secure_media.reddit_video.fallback_url;
+const videoUrl = (post: RedditMediaPost): { url: string; dash_url: string } | null => {
+    if (!(post.media || post.secure_media)) return null;
+    const media = post.media || post.secure_media;
+    if (!media) return null;
+    return { url: media.reddit_video.fallback_url, dash_url: media.reddit_video.dash_url };
 };
 
 const dlImage = async (url: string, name: string) => {
@@ -165,4 +174,4 @@ const processVideo = async (inputV: string, inputA: string, output: string, cove
     );
 };
 
-export { fetchPosts };
+export { fetchPosts, processPost };

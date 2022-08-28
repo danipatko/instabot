@@ -1,9 +1,14 @@
 import { useActionData, Form } from '@remix-run/react';
-import { getUserByToken } from '~/models/user.server';
+import { countUsers, getUserByToken, addUser } from '~/models/user.server';
 import { ActionArgs, json } from '@remix-run/node';
 import { createSession } from '~/session.server';
 
 export async function action({ request }: ActionArgs) {
+    if ((await countUsers()) == 0) {
+        const { id, is_admin } = await addUser('admin', true);
+        return createSession('/', request, { id, is_admin });
+    }
+
     const body = await request.formData();
     const token = body.get('token');
     if (!token) return json({ message: `Missing field value.` });

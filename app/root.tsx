@@ -19,6 +19,7 @@ export default function App() {
             <head>
                 <Meta />
                 <Links />
+                <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
             </head>
             <body>
                 <Header />

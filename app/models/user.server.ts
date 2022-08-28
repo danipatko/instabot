@@ -1,7 +1,6 @@
 import { TokenData } from '~/session.server';
 import { randstr } from 'src/lib/util';
 import prisma from '../../src/lib/db';
-import { User } from '@prisma/client';
 
 const getUsers = async () => {
     return await prisma.user.findMany();
@@ -27,4 +26,6 @@ const updateUser = async (id: number, username: string, is_admin: boolean): Prom
         .catch(() => false);
 };
 
-export { getUsers, getUserByToken, addUser, removeUser, updateUser };
+const countUsers = async () => await prisma.user.count();
+
+export { getUsers, countUsers, getUserByToken, addUser, removeUser, updateUser };

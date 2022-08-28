@@ -23,6 +23,32 @@ app.use('/content', express.static('./content/'));
 app.use('/build', express.static('public/build', { immutable: true, maxAge: '1y' }));
 app.use(express.static('public', { maxAge: '1h' }));
 
+// misc
+app.get('/test', async (req, res) => {
+    const r = await fetchPosts(1);
+    res.json(r);
+});
+
+app.get('/pog', async (req, res) => {
+    const { id } = await prisma.fetch.create({
+        data: {
+            enabled: true,
+            limit: 2,
+            over_18: true,
+            page_after: '',
+            page_count: 0,
+            page_reset: 10,
+            sort: 'hot',
+            sub: 'wordington',
+            time: 'year',
+            timespan: 0.001,
+            type: 'hot',
+        },
+    });
+    console.log(id);
+    res.send('ok ' + id);
+});
+
 // remix
 const BUILD_DIR = path.join(process.cwd(), 'build');
 
@@ -50,32 +76,6 @@ function purgeRequireCache() {
         }
     }
 }
-
-// misc
-app.get('/test', async (req, res) => {
-    const r = await fetchPosts(1);
-    res.json(r);
-});
-
-app.get('/pog', async (req, res) => {
-    const { id } = await prisma.fetch.create({
-        data: {
-            enabled: true,
-            limit: 2,
-            over_18: true,
-            page_after: '',
-            page_count: 0,
-            page_reset: 10,
-            sort: 'hot',
-            sub: 'wordington',
-            time: 'year',
-            timespan: 0.001,
-            type: 'hot',
-        },
-    });
-    console.log(id);
-    res.send('ok ' + id);
-});
 
 // routes
 // app.use('/api', router);
