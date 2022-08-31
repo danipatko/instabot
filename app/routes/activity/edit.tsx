@@ -104,7 +104,7 @@ const Activity = (props: ActivityProps) => {
                                 name="unfollow_target"
                                 type="number"
                                 autoComplete="unfollow_target"
-                                defaultValue={props.follow_target}
+                                defaultValue={props.unfollow_target}
                                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                             />
                         </dd>
@@ -123,18 +123,10 @@ const Activity = (props: ActivityProps) => {
                     </div>
                 </div>
                 <div className="flex justify-end">
-                    <button
-                        name="remove"
-                        value="1"
-                        type="submit"
-                        className="text-sm block px-5 py-2 rounded-md hover:bg-gray-100 text-[0.8125rem] font-semibold leading-5 text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <button name="remove" value="1" type="submit" className="button">
                         Remove
                     </button>
-                    <button
-                        name="save"
-                        value="1"
-                        type="submit"
-                        className="text-sm block px-5 py-2 rounded-md hover:bg-gray-100 text-[0.8125rem] font-semibold leading-5 text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <button name="save" value="1" type="submit" className="button">
                         Save
                     </button>
                 </div>
@@ -146,7 +138,7 @@ const Activity = (props: ActivityProps) => {
 export default function Whatever() {
     const data = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
-    const [activities, setActivities] = useState<ActivityProps[]>(data.map((x) => ({ ...x, last_used: new Date(x.last_used) })));
+    const [activities, setActivities] = useState<ActivityProps[]>(data);
 
     const addNewActivity = () => {
         setActivities((x) => [
@@ -155,7 +147,6 @@ export default function Whatever() {
                 id: 0,
                 timespan: 1,
                 accounts: [],
-                last_used: new Date(0),
                 post_target: 0,
                 auto_upload: false,
                 follow_queue: '',
@@ -178,9 +169,7 @@ export default function Whatever() {
                     <p className="py-12 text-center">There are no activities.</p>
                 )}
                 <div className="mt-4 w-full inline-flex justify-center items-center">
-                    <button
-                        className="text-sm block px-5 py-2 rounded-md hover:bg-gray-100 text-[0.8125rem] font-semibold leading-5 text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        onClick={addNewActivity}>
+                    <button className="button" onClick={addNewActivity}>
                         Add new
                     </button>
                 </div>

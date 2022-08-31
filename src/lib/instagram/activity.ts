@@ -1,171 +1,221 @@
-import type { BaseActivity } from '../db/activity';
+import { Activity } from '@prisma/client';
 import prisma from '../db';
 import ev from 'events';
 
-interface Timespan {
-    time: number;
-    posts: number;
-    follows: number;
-    unfollows: number;
-    postInterval: number;
-    followInterval: number;
-    unfollowInterval: number;
+const halfMinInHours = 1 / 2 / 60;
+
+interface Account {
+    id: number;
+    username: string;
+    activity: Activity;
 }
 
-class ActivityCycle {
-    private halted: boolean = false;
-    private enabled: boolean = false;
+class AccountQueue {
+    public current: Account | null = null;
 
-    private firstStart: boolean = true;
-    // loaded from db
-    private currentActivity: BaseActivity | null = null;
-    private currentAccount: { username: string; password: string } | null = null;
+    private async getLeastUsed() {
+        console.log(await prisma.account.findMany({ select: { username: true }, orderBy: { last_used: 'asc' } }));
 
-    private activityQueue: number[] = [];
-    private timespan: Timespan | null = null;
-
-    private startTime: number = 0;
-    private haltTime: number = 0;
-    public events = new ev.EventEmitter();
-    private interval: NodeJS.Timer | null = null;
-
-    private async setQueue() {
-        const data = await prisma.account.findMany({
-            select: { id: true, activity_id: true },
-            // (first start -> unused account : latest)
-            orderBy: { activity: { last_used: this.firstStart ? 'asc' : 'desc' } },
+        this.current = (await prisma.account.findFirst({
+            select: { id: true, username: true, activity: true },
             where: { NOT: { activity: null } },
-        });
-        // no item in the queue has an activity
-        if (!data.some((x) => x.activity_id !== null || x.activity_id !== undefined)) {
-            console.log('No accounts in this queue have activities.');
-            return void (this.enabled = false);
-        }
-        this.activityQueue = data.map((x) => x.id);
+            orderBy: { last_used: 'asc' },
+        })) as Account | null;
     }
 
-    private async loadAccount(self = false): Promise<void> {
-        if (!this.enabled) return void console.log('Activity cycle is disabled. Aborting...');
-        if (this.activityQueue.length === 0) return void console.log('No accounts in queue');
-
-        const data = await prisma.account.findFirst({
-            select: {
-                username: true,
-                password: true,
-                activity: { select: { id: true, timespan: true, follow_target: true, post_target: true, unfollow_target: true } },
-            },
-            where: { id: this.activityQueue[0], NOT: { activity: null } },
-        });
-
-        if (!(data && data.activity)) {
-            if (self) return void console.log('Failed to update queue, aborting...');
-            console.log('Cannot find queued account in database or activity is missing. Updating queue...');
-
-            await this.setQueue();
-            return void this.loadAccount(true);
-        }
-
-        console.log(`Loading activity of ${data.username}.`);
-        const { activity, ...creds } = data;
-        this.currentAccount = creds;
-        this.currentActivity = activity;
-
-        this.events.emit('login', this.currentAccount);
-        this.calculateTimespan();
+    private async updateLastUsed() {
+        console.log(`Updating ${this.current?.id}`);
+        if (this.current) await prisma.account.update({ data: { last_used: new Date() }, where: { id: this.current.id } });
     }
 
-    private calculateTimespan() {
-        if (!this.currentActivity) return void console.log('No current activity.');
-        const ts = this.currentActivity.timespan;
-        console.log(ts);
-        console.log(this.currentActivity.follow_target + 1);
-        this.timespan = {
-            time: ts,
-            posts: 0,
-            follows: 0,
-            unfollows: 0,
-            postInterval: ts / (this.currentActivity.post_target + 1),
-            followInterval: ts / (this.currentActivity.follow_target + 1),
-            unfollowInterval: ts / (this.currentActivity.unfollow_target + 1),
-        };
-    }
-
-    private cycle(halt = false) {
-        if (!this.timespan) return;
-        this.startTime = halt ? this.startTime + (Date.now() - this.haltTime) : Date.now();
-        this.interval = setInterval(this.check, 60 * 1000); // every minute
-    }
-
-    private check() {
-        if (!this.timespan) return void console.log(`[${new Date().toLocaleTimeString()}] No timespan.`);
-        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-
-        if (elapsed > this.timespan.time * 1000) {
-            return void this.next();
-        }
-
-        const postTime = this.timespan.postInterval * (this.timespan.posts + 1);
-        if (elapsed + 30 > postTime && postTime > elapsed * 30) {
-            this.events.emit('post');
-            this.timespan.posts++;
-        }
-
-        const followTime = this.timespan.followInterval * (this.timespan.follows + 1);
-        if (elapsed + 30 > followTime && followTime > elapsed * 30) {
-            this.events.emit('follow');
-            this.timespan.follows++;
-        }
-
-        const unfollowTime = this.timespan.unfollowInterval * (this.timespan.unfollows + 1);
-        if (elapsed + 30 > unfollowTime && unfollowTime > elapsed * 30) {
-            this.events.emit('unfollow');
-            this.timespan.unfollows++;
+    // update current or try to load last used
+    public async update() {
+        if (this.current) {
+            this.current = (await prisma.account.findFirst({
+                select: { id: true, username: true, activity: true },
+                where: { id: this.current.id, NOT: { activity: null } },
+            })) as Account;
+        } else {
+            await this.getLeastUsed();
         }
     }
 
     public async next() {
-        const current = this.activityQueue.shift();
-        if (!(current && this.currentActivity)) return void (this.enabled = false);
-        await prisma.activity.update({ data: { last_used: new Date() }, where: { id: this.currentActivity.id } });
-        this.halted = false;
-        this.start();
+        await this.updateLastUsed(); // mark time of last usage
+        await this.getLeastUsed(); // load next (or the same)
+    }
+}
+
+interface Progress {
+    done: number; // completed actions
+    total: number; // number of actions
+    interval: number; // hours between actions
+    next: number; // hours until next action
+}
+
+class Timer {
+    private timer: NodeJS.Timer | null = null;
+    private timings: Map<string, Progress> = new Map();
+    private timeStarted: number = 0; // unix timestamp
+    private timeStopped: number = 0; // unix timestamp
+
+    public events: ev.EventEmitter = new ev.EventEmitter();
+    public enabled: boolean = false;
+
+    public set(key: string, timer: Progress) {
+        this.timings.set(key, timer);
     }
 
-    public async start() {
+    public clear(key: string) {
+        this.timings.delete(key);
+    }
+
+    public clearAll() {
+        this.timings.clear();
+        this.events.removeAllListeners();
+    }
+
+    private cycle() {
+        const elapsed = (Date.now() - this.timeStarted) / (1000 * 60 * 60); // in hours
+        console.log(`Elapsed: ${elapsed}`);
+        console.log(this.timings.size);
+        this.timings.forEach((t, k) => {
+            const next = t.interval * (t.done + 1);
+            console.log(`Next tick for ${k}: ${next}`);
+            if (next + halfMinInHours > elapsed && elapsed > next - halfMinInHours && t.done < t.total) {
+                t.done++;
+                this.events.emit(k);
+            }
+            t.next = next;
+            this.timings.set(k, { ...t });
+        });
+    }
+
+    public start(first = true) {
+        if (this.enabled) return;
         this.enabled = true;
-        if (!this.halted) {
-            await this.setQueue();
-            await this.loadAccount();
-        }
-        this.cycle(this.halted);
-        this.halted = false;
-        this.firstStart = false;
+
+        if (first) this.timeStarted = Date.now();
+        else this.timeStarted = this.timeStarted + (Date.now() - this.timeStopped);
+
+        this.timer = setInterval(() => this.cycle(), 60 * 1000);
     }
 
-    public halt() {
-        this.halted = true;
+    public stop() {
+        if (!this.enabled) return;
         this.enabled = false;
-        this.haltTime = Date.now();
-        if (this.interval) clearInterval(this.interval);
+
+        this.timeStopped = Date.now();
+        this.timer && clearInterval(this.timer);
+    }
+
+    public resume() {
+        this.start(false);
     }
 
     public reset() {
+        this.stop();
+        this.clearAll();
+        this.timeStarted = 0;
+        this.timeStopped = 0;
+    }
+
+    public get progress() {
+        return {
+            elapsed: (Date.now() - this.timeStarted) / (1000 * 60 * 60),
+            enabled: this.enabled,
+            timings: Object.fromEntries(this.timings),
+        };
+    }
+}
+
+class ActivityCycle {
+    private timer: Timer = new Timer();
+    private accountQueue: AccountQueue = new AccountQueue();
+    private halted: boolean = false;
+
+    private getInterval(timespan: number, total: number) {
+        return timespan / (total + 1);
+    }
+
+    private getProgress(activity: Activity) {
+        return {
+            post: {
+                done: 0,
+                next: 0,
+                total: activity.post_target,
+                interval: this.getInterval(activity.timespan, activity.post_target),
+            },
+            follow: {
+                done: 0,
+                next: 0,
+                total: activity.follow_target,
+                interval: this.getInterval(activity.timespan, activity.follow_target),
+            },
+            unfollow: {
+                done: 0,
+                next: 0,
+                total: activity.unfollow_target,
+                interval: this.getInterval(activity.timespan, activity.unfollow_target),
+            },
+        };
+    }
+
+    public async start() {
+        const account = this.accountQueue.current;
+        if (!account) return void console.log('No accounts in queue.');
+
+        if (this.halted) {
+            this.halted = false;
+            this.timer.resume();
+            return;
+        }
+
+        // events
+        this.timer.clearAll();
+        this.timer.set('account', { done: 0, interval: account.activity.timespan, next: account.activity.timespan, total: 1 });
+        this.timer.events.on('account', () => this.next());
+
+        const progress = this.getProgress(account.activity);
+        this.timer.set('post', progress.post);
+        this.timer.set('follow', progress.follow);
+        this.timer.set('unfollow', progress.unfollow);
+
+        this.timer.start();
+    }
+
+    public stop() {
+        this.timer.stop();
+        this.halted = true;
+    }
+
+    public reset() {
+        this.accountQueue.current = null;
+        this.timer.reset();
         this.halted = false;
-        this.enabled = false;
-        if (this.interval) clearInterval(this.interval);
+    }
+
+    public async update() {
+        this.stop();
+        await this.accountQueue.update();
+    }
+
+    public async next() {
+        this.reset();
+        await this.accountQueue.next();
+        this.timer.events.emit('login');
+        this.start();
+    }
+
+    public get events() {
+        return this.timer.events;
     }
 
     public get state() {
         return {
-            halted: this.halted,
-            enabled: this.enabled,
-            account: this.currentAccount?.username,
-            ...(this.timespan && {
-                ...this.timespan,
-                postInterval: this.timespan.postInterval.toFixed(2),
-                followInterval: this.timespan.followInterval.toFixed(2),
-                unfollowInterval: this.timespan.unfollowInterval.toFixed(2),
-            }),
+            ...this.timer.progress,
+            account: this.accountQueue.current?.username,
+            timepsan: this.accountQueue.current?.activity.timespan,
         };
     }
 }

@@ -25,4 +25,8 @@
             @apply opacity-100;
         }
     }
+
+    .button {
+        @apply text-sm block px-5 py-2 rounded-md hover:bg-gray-100 text-[0.8125rem] font-semibold leading-5 text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
+    }
 }

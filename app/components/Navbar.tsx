@@ -1,4 +1,5 @@
 import { Popover, Transition } from '@headlessui/react';
+import { Link } from '@remix-run/react';
 import { Fragment, useEffect, useState } from 'react';
 
 export default function Navbar() {
@@ -30,15 +31,18 @@ export default function Navbar() {
                         </Popover.Button>
                     </div>
                     <Popover.Group as="nav" className="hidden md:flex space-x-10">
-                        <a href="/" className="text-base font-medium text-gray-500 hover:text-gray-900">
+                        <Link to={'/'} className="text-base font-medium text-gray-500 hover:text-gray-900">
                             Home
-                        </a>
-                        <a href="/access" className="text-base font-medium text-gray-500 hover:text-gray-900">
+                        </Link>
+                        <Link to={'/access'} className="text-base font-medium text-gray-500 hover:text-gray-900">
                             Access
-                        </a>
-                        <a href="/posts" className="text-base font-medium text-gray-500 hover:text-gray-900">
+                        </Link>
+                        <Link to={'/posts'} className="text-base font-medium text-gray-500 hover:text-gray-900">
                             Posts
-                        </a>
+                        </Link>
+                        <Link to={'/activity'} className="text-base font-medium text-gray-500 hover:text-gray-900">
+                            Activity
+                        </Link>
                     </Popover.Group>
                 </div>
             </div>
@@ -76,21 +80,26 @@ export default function Navbar() {
                             </div>
                             <div className="mt-6">
                                 <nav className="grid gap-y-8">
-                                    <a href="/" className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
+                                    <Link to={'/'} className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
                                         <span className="ml-3 text-base font-medium text-gray-900">
                                             <span className="text-indigo-700 text-xl">&#8250;</span> Home
                                         </span>
-                                    </a>
-                                    <a href="/access" className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
+                                    </Link>
+                                    <Link to={'/access'} className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
                                         <span className="ml-3 text-base font-medium text-gray-900">
                                             <span className="text-indigo-700 text-xl">&#8250;</span> Access
                                         </span>
-                                    </a>
-                                    <a href="/posts" className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
+                                    </Link>
+                                    <Link to={'/posts'} className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
                                         <span className="ml-3 text-base font-medium text-gray-900">
                                             <span className="text-indigo-700 text-xl">&#8250;</span> Posts
                                         </span>
-                                    </a>
+                                    </Link>
+                                    <Link to={'/activity'} className="-m-3 p-3 flex items-center rounded-md hover:bg-gray-100">
+                                        <span className="ml-3 text-base font-medium text-gray-900">
+                                            <span className="text-indigo-700 text-xl">&#8250;</span> Activity
+                                        </span>
+                                    </Link>
                                 </nav>
                             </div>
                         </div>

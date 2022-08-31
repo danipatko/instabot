@@ -22,11 +22,28 @@ model Account {
 
   password        String 
   username        String
+  follow_base     String?
+  last_used       DateTime @default(now())
 
   activity_id     Int? 
   activity        Activity? @relation(fields: [activity_id], references: [id], onDelete: SetNull)
-  
+
   posts           Post[]
+  followers       IgUser[]
+}
+
+model IgUser {
+  id              Int @id @default(autoincrement())
+  
+  account_id     Int
+  account        Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+
+  username        String
+  fullname        String
+  pk              Int
+  follow          Boolean // follow or unfollow
+
+  created_at      DateTime @default(now())
 }
 
 model Activity {
@@ -42,7 +59,6 @@ model Activity {
   unfollow_queue  String
 
   auto_upload     Boolean @default(false)
-  last_used       DateTime @default(now())
 
   accounts        Account[]
   queries         Fetch[]

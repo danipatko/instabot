@@ -16,6 +16,7 @@ export async function loader({ request }: LoaderArgs) {
 export async function action({ request }: ActionArgs) {
     const token = await getToken(request);
     if (!token) return redirect('/login');
+    if (!token.is_admin) throw new Response('Forbidden', { status: 403 });
 
     const fd = await request.formData().catch(() => null);
     if (!fd) return json({ message: `Invalid formdata.` });
@@ -74,7 +75,7 @@ export default function Access() {
                             <div className="flex justify-end">
                                 <button
                                     type="submit"
-                                    className="py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    className="text-sm block px-5 py-2 rounded-md hover:bg-gray-100 text-[0.8125rem] font-semibold leading-5 text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     {transition.state === 'submitting' ? 'Saving...' : 'Save'}
                                 </button>
                             </div>

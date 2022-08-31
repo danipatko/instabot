@@ -23,7 +23,7 @@ const upsertAccount = async (username: string, password: string, activity_id: nu
     prisma.account
         .upsert({
             update: { username, password, activity_id: isNaN(activity_id) ? null : activity_id },
-            create: { username, password, activity_id: isNaN(activity_id) ? null : activity_id },
+            create: { username, password, last_used: new Date(0), activity_id: isNaN(activity_id) ? null : activity_id },
             where: { ...(!isNaN(id) && { id }) },
         })
         .then(() => true)
@@ -35,8 +35,7 @@ const deleteAccount = async (id: number) =>
         .then(() => true)
         .catch(() => false);
 
-const getActivities = () =>
-    prisma.activity.findMany({ include: { accounts: { select: { username: true } } }, orderBy: { last_used: 'desc' } });
+const getActivities = () => prisma.activity.findMany({ include: { accounts: { select: { username: true } } } });
 
 const upsertActivity = async (
     id: number,
@@ -51,7 +50,6 @@ const upsertActivity = async (
         .upsert({
             create: {
                 timespan,
-                last_used: new Date(),
                 post_target,
                 auto_upload,
                 follow_queue: '',

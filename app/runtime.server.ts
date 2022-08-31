@@ -13,6 +13,4 @@ else {
     ac = global.__ac__;
 }
 
-ac.start();
-
 export { ac };

@@ -20,6 +20,7 @@ const esbuild = require('esbuild');
             '@prisma/client',
             '@remix-run/node',
             '@remix-run/express',
+            'instagram-private-api'
         ],
         bundle: true,
         platform: 'node',

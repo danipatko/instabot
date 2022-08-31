@@ -13,6 +13,7 @@ export async function action({ request }: ActionArgs) {
     const token = body.get('token');
     if (!token) return json({ message: `Missing field value.` });
 
+    console.log(token.toString());
     const user = await getUserByToken(token.toString());
     if (!user) return json({ message: 'Invalid access token.' });
 
