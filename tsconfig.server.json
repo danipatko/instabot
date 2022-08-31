@@ -1,5 +1,4 @@
 {
-    "files": ["custom.d.ts"],
     "compilerOptions": {
         "target": "ESNext",
         "module": "ESNext",

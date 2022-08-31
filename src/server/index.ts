@@ -1,7 +1,7 @@
 import { createRequestHandler } from '@remix-run/express';
-import ActivityCycle from '../lib/instagram/activity';
-import { fetchPosts } from '../lib/reddit/fetch';
-import Queue from '../lib/reddit/queue';
+// import ActivityCycle from '../lib/instagram/activity';
+// import { fetchPosts } from '../lib/reddit/fetch';
+// import Queue from '../lib/reddit/queue';
 import compression from 'compression';
 import prisma from '../lib/db';
 import express from 'express';
@@ -24,10 +24,10 @@ app.use('/build', express.static('public/build', { immutable: true, maxAge: '1y'
 app.use(express.static('public', { maxAge: '1h' }));
 
 // misc
-app.get('/test', async (req, res) => {
-    const r = await fetchPosts(1);
-    res.json(r);
-});
+// app.get('/test', async (req, res) => {
+//     const r = await fetchPosts(1);
+//     res.json(r);
+// });
 
 app.get('/pog', async (req, res) => {
     const { id } = await prisma.fetch.create({

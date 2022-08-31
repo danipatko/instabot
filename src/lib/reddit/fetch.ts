@@ -3,7 +3,6 @@ import type { Fetch, Source } from '@prisma/client';
 import ffmpeg from 'fluent-ffmpeg';
 import { Promise } from 'bluebird';
 import { promisify } from 'util';
-import fetch from 'node-fetch';
 import path from 'path/posix';
 import prisma from '../db';
 import fs from 'fs';
@@ -99,15 +98,17 @@ const videoUrl = (post: RedditMediaPost): { url: string; dash_url: string } | nu
     return { url: media.reddit_video.fallback_url, dash_url: media.reddit_video.dash_url };
 };
 
-const dlImage = async (url: string, name: string) => {
+const dlImage = async (url: string, name: string): Promise<string> => {
     const ext = getExt(url);
     if (!ext) throw new Error('Invalid file url');
     const input = path.join(SAVE_PATH, `${name}temp.${ext}`);
     const output = path.join(SAVE_PATH, `${name}.${ext}`);
-    return dl(url, input).then(() => processImage(input, output));
+    return dl(url, input)
+        .then(() => processImage(input, output))
+        .then(() => output);
 };
 
-const dlVideo = async (url: string, name: string) => {
+const dlVideo = async (url: string, name: string): Promise<[string, string]> => {
     const ext = getExt(url);
     if (!ext) throw new Error('Invalid file url');
 
@@ -118,7 +119,8 @@ const dlVideo = async (url: string, name: string) => {
 
     return dl(url, inputV)
         .then(() => dl(audioUrl(url), inputA))
-        .then(() => processVideo(inputV, inputA, output, cover));
+        .then(() => processVideo(inputV, inputA, output, cover))
+        .then(() => [output, cover]);
 };
 
 const processImage = async (input: string, output: string, removeInput = true) => {

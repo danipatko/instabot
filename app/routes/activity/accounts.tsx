@@ -111,10 +111,13 @@ const Account = ({ props, activities }: AccountProps) => {
 export default function Accounts() {
     const data = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
-    const [accounts, setAccounts] = useState<Acc[]>(data.accounts);
+    const [accounts, setAccounts] = useState<Acc[]>(data.accounts.map((x) => ({ ...x, last_used: new Date(x.last_used) })));
 
     const addNewAccount = () => {
-        setAccounts((x) => [...x, { username: '', activity_id: 0, password: '', id: 0 }]);
+        setAccounts((x) => [
+            ...x,
+            { username: '', activity_id: 0, password: '', id: 0, last_used: new Date(0), follow_base: 'instagram' },
+        ]);
     };
 
     return (

@@ -13,6 +13,7 @@ const esbuild = require('esbuild');
             'express',
             'bluebird',
             'esbuild',
+            'node-fetch',
             'compression',
             'jsonwebtoken',
             'fluent-ffmpeg',
@@ -20,8 +21,9 @@ const esbuild = require('esbuild');
             '@prisma/client',
             '@remix-run/node',
             '@remix-run/express',
-            'instagram-private-api'
+            'instagram-private-api',
         ],
+        format: 'iife',
         bundle: true,
         platform: 'node',
         tsconfig: 'tsconfig.server.json',

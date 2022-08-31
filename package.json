@@ -15,7 +15,6 @@
         "start": "cross-env NODE_ENV=production node ./dist/index.js"
     },
     "devDependencies": {
-        "@astrojs/tailwind": "^1.0.0",
         "@babel/core": "^7.18.13",
         "@remix-run/dev": "^1.7.0",
         "@remix-run/eslint-config": "^1.7.0",
@@ -27,7 +26,6 @@
         "@types/morgan": "^1.9.3",
         "@types/react": "^18.0.17",
         "@types/react-dom": "^18.0.6",
-        "astro": "^1.0.6",
         "autoprefixer": "^10.4.8",
         "babel-loader": "^8.2.5",
         "bluebird": "^3.7.2",

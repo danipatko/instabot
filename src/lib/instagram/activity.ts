@@ -218,6 +218,10 @@ class ActivityCycle {
             timepsan: this.accountQueue.current?.activity.timespan,
         };
     }
+
+    public get currentAccount(): number | undefined {
+        return this.accountQueue.current?.id;
+    }
 }
 
 export default ActivityCycle;

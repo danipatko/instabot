@@ -12,6 +12,10 @@ export async function loader({ request }: LoaderArgs) {
     return json(await getPending());
 }
 
+export async function action() {
+    //
+}
+
 export const meta: MetaFunction = () => ({
     title: 'Posts',
 });

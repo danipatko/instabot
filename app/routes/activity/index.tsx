@@ -116,52 +116,6 @@ export default function Overview() {
                                 </dd>
                             </div>
                         ))}
-                        {/* <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500 sm:inline-flex sm:items-center">Follows</dt>
-                            <dd className="p-2 mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                <div>
-                                    <div className="w-full relative bg-gray-200 rounded-full">
-                                        <div
-                                            className="bg-indigo-700 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-l-full"
-                                            style={{
-                                                width: `${(data.timepsan.follows / data.activity.follow_target) * 100}%`,
-                                            }}></div>
-                                    </div>
-                                    <span className="text-gray-600">
-                                        {data.timepsan.follows} out of {data.activity.follow_target}
-                                    </span>
-                                </div>
-                                <div className="text-sm text-gray-700">
-                                    Next follow in {normalizeHours(data.timepsan.nextFollow - data.elapsed)}
-                                </div>
-                                <div className="text-sm text-gray-700">
-                                    Interval: {normalizeHours(data.timepsan.followInterval)}
-                                </div>
-                            </dd>
-                        </div>
-                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500 sm:inline-flex sm:items-center">Unfollows</dt>
-                            <dd className="p-2 mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                <div>
-                                    <div className="w-full relative bg-gray-200 rounded-full">
-                                        <div
-                                            className="bg-indigo-700 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-l-full"
-                                            style={{
-                                                width: `${(data.timepsan.unfollows / data.activity.unfollow_target) * 100}%`,
-                                            }}></div>
-                                    </div>
-                                    <span className="text-gray-600">
-                                        {data.timepsan.unfollows} out of {data.activity.unfollow_target}
-                                    </span>
-                                </div>
-                                <div className="text-sm text-gray-700">
-                                    Next unfollow in {normalizeHours(data.timepsan.nextUnfollow - data.elapsed)}
-                                </div>
-                                <div className="text-sm text-gray-700">
-                                    Interval: {normalizeHours(data.timepsan.unfollowInterval)}
-                                </div>
-                            </dd>
-                        </div> */}
                     </>
                 )}
             </div>

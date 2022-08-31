@@ -34,15 +34,14 @@ model Account {
 
 model IgUser {
   id              Int @id @default(autoincrement())
-  
+
   account_id     Int
   account        Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
 
   username        String
   fullname        String
-  pk              Int
-  follow          Boolean // follow or unfollow
-
+  pk              Int @unique
+  
   created_at      DateTime @default(now())
 }
 
@@ -114,8 +113,8 @@ model Source {
 model Post {
   id            Int @id @default(autoincrement())
 
-  source_id     Int? @unique
-  source        Source? @relation(fields: [source_id], references: [id], onDelete: SetNull)
+  source_id     Int @unique
+  source        Source  @relation(fields: [source_id], references: [id], onDelete: SetNull)
 
   account_id    Int?
   account       Account? @relation(fields: [account_id], references: [id], onDelete: SetNull)

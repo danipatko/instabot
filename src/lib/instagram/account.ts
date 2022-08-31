@@ -1,8 +1,10 @@
-import { AccountFollowersFeedResponseUsersItem, IgApiClient, IgCheckpointError } from 'instagram-private-api';
+import { AccountFollowersFeedResponseUsersItem, Feed, IgApiClient, IgCheckpointError } from 'instagram-private-api';
+import { Account, IgUser } from '@prisma/client';
 import { Promise } from 'bluebird';
 import { promisify } from 'util';
+import prisma from '../db';
 import fs from 'fs';
-import { Account } from '@prisma/client';
+import { processPost } from '../reddit/fetch';
 
 const read = promisify(fs.readFile);
 
@@ -11,12 +13,18 @@ const ig = new IgApiClient();
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 const rng = (from: number, to: number) => Math.floor(from + Math.random() * (to - from));
 
-class Instagram {
-    private toFollow: number[] = [];
-    private toUnfollow: number[] = [];
-    private account: Account | null = null;
+interface IgUserPart {
+    pk: number;
+    username: string;
+    fullname: string;
+}
 
-    public async login(username: string, password: string): Promise<boolean> {
+class Instagram {
+    private account: Account | null = null;
+    private following: number[] = [];
+    private followBase: string | number = 'instagram';
+
+    private async login(username: string, password: string): Promise<boolean> {
         ig.state.generateDevice(username);
         return Promise.try(() => ig.account.login(username, password))
             .then(() => true)
@@ -31,39 +39,28 @@ class Instagram {
             });
     }
 
-    public async logout(): Promise<void> {
+    private async logout(): Promise<void> {
         await ig.account.logout();
     }
 
-    private async publishPhoto(_path: string, caption: string): Promise<boolean> {
-        return read(_path)
-            .then((file) => ig.publish.photo({ file, caption }))
-            .then(() => true)
-            .catch((e) => {
-                console.error(`Failed to publish photo ${_path} to instagram.\n${e}`);
-                return false;
-            });
+    private async publishPhoto(_path: string, caption: string) {
+        return read(_path).then((file) => ig.publish.photo({ file, caption }));
     }
 
-    private async publishVideo(_path: string, cover: string, caption: string): Promise<boolean> {
-        return Promise.all([read(_path), read(cover)])
-            .then(([video, coverImage]) =>
-                ig.publish.video({
-                    video,
-                    caption,
-                    coverImage,
-                })
-            )
-            .then(() => true)
-            .catch((e) => {
-                console.error(`Failed to publish photo ${_path} to instagram.\n${e}`);
-                return false;
-            });
+    private async publishVideo(_path: string, cover: string, caption: string) {
+        return Promise.all([read(_path), read(cover)]).then(([video, coverImage]) =>
+            ig.publish.video({
+                video,
+                caption,
+                coverImage,
+            })
+        );
     }
 
     private async follow(id: number): Promise<boolean> {
         return ig.friendship
             .create(id)
+            .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
                 console.error(`Failed to follow user ${id}.\n${e}`);
@@ -74,6 +71,7 @@ class Instagram {
     private async unfollow(id: number): Promise<boolean> {
         return ig.friendship
             .destroy(id)
+            .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
                 console.error(`Failed to unfollow user ${id}.\n${e}`);
@@ -81,24 +79,108 @@ class Instagram {
             });
     }
 
-    private async findFollowersOf(id: number | string, count: number = 100): Promise<number[]> {
+    private async getFeedItems<T>(feed: Feed<any, T>, count: number = 100_000): Promise<T[]> {
+        let items: T[] = [];
+        do {
+            items = items.concat(await feed.items());
+        } while (items.length < count && feed.isMoreAvailable());
+        return items;
+    }
+
+    private async findFollowersOf(id: number | string, noPrivate: boolean = false, count: number = 100): Promise<IgUserPart[]> {
         if (typeof id === 'string') {
             id = await ig.user.getIdByUsername(id);
         }
 
         const followersFeed = ig.feed.accountFollowers(id);
-        let page: AccountFollowersFeedResponseUsersItem[] = [];
-        let found: number[] = [];
-        do {
-            page = await followersFeed.items().catch(() => []);
-            found = [...found, ...page.map((u) => u.pk)];
-            await sleep(rng(2000, 5000));
-        } while (found.length < count && followersFeed.isMoreAvailable());
-
-        return found;
+        return (await this.getFeedItems(followersFeed, count))
+            .filter((u) => !noPrivate || !u.is_private)
+            .map((u) => ({
+                pk: u.pk,
+                username: u.username,
+                fullname: u.full_name,
+            }));
     }
 
-    private a() {}
+    private async updateFollowing() {
+        const followingFeed = ig.feed.accountFollowing(ig.state.cookieUserId);
+        this.following = (await this.getFeedItems(followingFeed, 100)).map((x) => x.pk);
+    }
+
+    private async updateToFollow() {
+        if (!this.account) return;
+        const account_id = this.account.id;
+        const users = await this.findFollowersOf(this.followBase, true, 100);
+        this.followBase = users[users.length - 1].pk;
+        users.forEach(async (u) => {
+            await prisma.igUser.create({ data: { ...u, account_id } });
+        });
+    }
+
+    // PUBLIC
+
+    public async followNext(self = false) {
+        if (!this.account) return;
+
+        const user = await prisma.igUser.findFirst({
+            select: { id: true },
+            orderBy: { created_at: 'asc' },
+        });
+        if (!user) {
+            if (!self) {
+                await this.updateToFollow();
+                await this.followNext();
+            }
+            return;
+        }
+        await this.follow(user.id);
+    }
+
+    public async unfollowNext(self = false): Promise<void> {
+        if (!this.account) return;
+
+        const user = this.following.pop();
+        if (!user) {
+            if (!self) {
+                await this.updateFollowing();
+                await this.unfollowNext(true);
+            }
+            return;
+        }
+        await this.unfollow(user);
+    }
+
+    // process post from reddit then upload to instagram
+    public async post(): Promise<Boolean> {
+        if (!this.account) return false;
+
+        return prisma.post
+            .findFirst({
+                include: { source: true },
+                where: { account_id: this.account.id, uploaded: false },
+                orderBy: { upload_index: 'asc' },
+            })
+            .then((post) => {
+                if (!post) throw new Error('Could not find any posts for uploading.');
+                return Promise.all([processPost(post.source), post]);
+            })
+            .then(([file, post]) => {
+                if (typeof file === 'string') return this.publishPhoto(file, post.caption);
+                else return this.publishVideo(file[0], file[1], post.caption);
+            })
+            .then(() => true)
+            .catch((e) => {
+                console.error(`Failed to publish post to instagram.\n${e}`);
+                return false;
+            });
+    }
+
+    public async loadAccount(id: number | undefined): Promise<boolean> {
+        if (id === undefined) return false;
+        if (this.account && this.account.id === id) return true; // do not relogin
+        this.account = await prisma.account.findFirst({ where: { id } });
+        return this.account ? true : false;
+    }
 }
 
 export default Instagram;
