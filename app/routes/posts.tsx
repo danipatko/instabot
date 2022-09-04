@@ -1,5 +1,4 @@
 import { LoaderArgs, MetaFunction, redirect } from '@remix-run/node';
-import { getUsers } from 'app/models/user.server';
 import { Link, Outlet, useLoaderData } from '@remix-run/react';
 import { getToken } from '~/session.server';
 import { json } from '@remix-run/node';
@@ -8,13 +7,9 @@ import { useState } from 'react';
 export async function loader({ request }: LoaderArgs) {
     const token = await getToken(request);
     if (!token) return redirect('/login');
-    console.log(request.url.split('/').pop());
+
     return json({ url: request.url.split('/').pop() });
 }
-
-export const meta: MetaFunction = () => ({
-    title: 'Posts',
-});
 
 export default function Posts() {
     const { url: firstUrl } = useLoaderData<typeof loader>();
@@ -28,6 +23,7 @@ export default function Posts() {
                         { to: '/posts', url: 'posts', name: 'Pending' },
                         { to: '/posts/archives', url: 'archives', name: 'Archives' },
                         { to: '/posts/uploads', url: 'uploads', name: 'Uploads' },
+                        { to: '/posts/queue', url: 'queue', name: 'Queue' },
                     ].map((x, i) => (
                         <Link onClick={() => setUrl(x.url)} key={i} to={x.to}>
                             <div

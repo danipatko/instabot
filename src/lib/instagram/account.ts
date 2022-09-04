@@ -5,8 +5,11 @@ import { promisify } from 'util';
 import prisma from '../db';
 import fs from 'fs';
 import { processPost } from '../reddit/fetch';
+import ActivityCycle from './activity';
 
 const read = promisify(fs.readFile);
+const write = promisify(fs.writeFile);
+const exists = promisify(fs.exists);
 
 const ig = new IgApiClient();
 
@@ -23,10 +26,40 @@ class Instagram {
     private account: Account | null = null;
     private following: number[] = [];
     private followBase: string | number = 'instagram';
+    public ac: ActivityCycle;
+
+    constructor() {
+        const ac = new ActivityCycle();
+
+        ac.events.removeAllListeners();
+        ac.events.on('login', () => {
+            console.log('Logging in to #%d', ac.currentAccount);
+            // this.loadAccount(ac.currentAccount).then((ok) => {
+            //     if (!ok) ac.reset();
+            // });
+        });
+        ac.events.on('post', () => this.post());
+        ac.events.on('follow', () => this.followNext());
+        ac.events.on('unfollow', () => this.unfollowNext());
+
+        this.ac = ac;
+    }
+
+    private async saveState() {
+        const serialized = await ig.state.serialize();
+        delete serialized.constants;
+        return write('session.json', serialized).catch(() => console.log('Failed to save state.'));
+    }
 
     private async login(username: string, password: string): Promise<boolean> {
         ig.state.generateDevice(username);
-        return Promise.try(() => ig.account.login(username, password))
+        return Promise.try(() => {
+            ig.request.end$.subscribe(() => this.saveState());
+            return exists('session.json').then(async (load) => {
+                if (load) return ig.state.deserialize(await read('session.json'));
+                else return ig.account.login(username, password);
+            });
+        })
             .then(() => true)
             .catch(IgCheckpointError, async () => {
                 console.log(ig.state.checkpoint); // Checkpoint info here
@@ -37,10 +70,6 @@ class Instagram {
                 console.error(`Could not resolve checkpoint:\n${e}\n${e.stack}`);
                 return false;
             });
-    }
-
-    private async logout(): Promise<void> {
-        await ig.account.logout();
     }
 
     private async publishPhoto(_path: string, caption: string) {
@@ -119,6 +148,10 @@ class Instagram {
 
     // PUBLIC
 
+    public async logout(): Promise<void> {
+        await ig.account.logout();
+    }
+
     public async followNext(self = false) {
         if (!this.account) return;
 
@@ -177,9 +210,16 @@ class Instagram {
 
     public async loadAccount(id: number | undefined): Promise<boolean> {
         if (id === undefined) return false;
-        if (this.account && this.account.id === id) return true; // do not relogin
+        if (this.account) {
+            if (this.account.id === id) return true; // do not relogin
+            await this.logout();
+            await Promise.delay(rng(10_000, 20_000));
+        }
+
         this.account = await prisma.account.findFirst({ where: { id } });
-        return this.account ? true : false;
+        if (!this.account) return false;
+
+        return await this.login(this.account.username, this.account.password);
     }
 }
 

@@ -1,14 +1,15 @@
 import { ActionArgs, LoaderArgs, MetaFunction, redirect } from '@remix-run/node';
 import { Form, useLoaderData } from '@remix-run/react';
+import { normalizeHours } from '~/util';
 import { getToken } from '~/session.server';
 import { json } from '@remix-run/node';
-import { ac } from '~/runtime.server';
+import { ig } from '~/runtime.server';
 
 export async function loader({ request }: LoaderArgs) {
     const token = await getToken(request);
     if (!token) return redirect('/login');
 
-    return json(ac.state);
+    return json(ig.ac.state);
 }
 
 export const meta: MetaFunction = () => ({
@@ -27,30 +28,24 @@ export async function action({ request }: ActionArgs) {
 
     switch (action) {
         case 'start':
-            await ac.start();
+            await ig.ac.start();
             break;
         case 'stop':
-            ac.stop();
+            ig.ac.stop();
             break;
         case 'reset':
-            ac.reset();
+            ig.ac.reset();
             break;
         case 'update':
-            await ac.update();
+            await ig.ac.update();
             break;
         case 'next':
-            await ac.next();
+            await ig.ac.next();
             break;
     }
 
     return json({ message: '' });
 }
-
-const normalizeHours = (hours: number): string => {
-    const hrs = Math.floor(hours);
-    const mins = Math.floor((hours % 1) * 60);
-    return hrs < 1 && mins < 1 ? 'less than a minute' : `${hrs} hour${hrs == 1 ? '' : 's'} ${mins} minute${mins == 1 ? '' : 's'}`;
-};
 
 export default function Overview() {
     const data = useLoaderData<typeof loader>();

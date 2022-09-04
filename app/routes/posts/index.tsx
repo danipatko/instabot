@@ -1,9 +1,8 @@
-import { LoaderArgs, MetaFunction, redirect } from '@remix-run/node';
-import { getUsers } from 'app/models/user.server';
-import { Outlet, useLoaderData } from '@remix-run/react';
+import { ActionArgs, LoaderArgs, MetaFunction, redirect } from '@remix-run/node';
+import { acceptPost, archivePost, getPending } from '~/models/post.server';
+import { Form, useLoaderData } from '@remix-run/react';
 import { getToken } from '~/session.server';
 import { json } from '@remix-run/node';
-import { getPending } from '~/models/post.server';
 import Post from '~/components/Post';
 
 export async function loader({ request }: LoaderArgs) {
@@ -12,13 +11,23 @@ export async function loader({ request }: LoaderArgs) {
     return json(await getPending());
 }
 
-export async function action() {
-    //
-}
+export async function action({ request }: ActionArgs) {
+    const fd = await request.formData().catch(() => null);
+    if (!fd) return json({ message: `Invalid formdata.` });
+    const { id, action } = Object.fromEntries(fd);
+    if (!(id && action)) return json({ message: `Failed to do action: bad request.` });
 
-export const meta: MetaFunction = () => ({
-    title: 'Posts',
-});
+    console.log(action);
+    if (action.toString() === 'accept') {
+        await acceptPost(Number(id.toString()), 0);
+    } else {
+        //
+        await archivePost(Number(id.toString()));
+    }
+
+    const ok = true;
+    return json({ message: ok ? '' : `Failed to update account.` });
+}
 
 export default function Posts() {
     const data = useLoaderData<typeof loader>();
@@ -31,22 +40,31 @@ export default function Posts() {
                         return (
                             <Post key={i} src={x}>
                                 {/* @ts-ignore */}
-                                <div className="flex justify-end items-center">
-                                    <div className="flex-1">
-                                        <a
-                                            target="_blank"
-                                            className="text-sm px-4 py-2 rounded-md hover:bg-gray-100 font-semibold"
-                                            href={x.url}>
-                                            Open original
-                                        </a>
+                                <Form reloadDocument method="post">
+                                    <input type="number" className="hidden" readOnly value={x.id} />
+                                    <div className="flex justify-end items-center">
+                                        <div className="flex-1">
+                                            <a
+                                                target="_blank"
+                                                className="text-sm px-4 py-2 rounded-md hover:bg-gray-100 font-semibold"
+                                                href={x.url}>
+                                                Open original
+                                            </a>
+                                        </div>
+                                        <button
+                                            name="action"
+                                            value="accept"
+                                            className="text-sm block px-4 py-2 rounded-md hover:bg-gray-100 font-semibold">
+                                            Upload
+                                        </button>
+                                        <button
+                                            name="action"
+                                            value="archive"
+                                            className="text-sm block px-4 py-2 rounded-md hover:bg-gray-100 font-semibold">
+                                            Archive
+                                        </button>
                                     </div>
-                                    <button className="text-sm block px-4 py-2 rounded-md hover:bg-gray-100 font-semibold">
-                                        Upload
-                                    </button>
-                                    <button className="text-sm block px-4 py-2 rounded-md hover:bg-gray-100 font-semibold">
-                                        Archive
-                                    </button>
-                                </div>
+                                </Form>
                             </Post>
                         );
                     })}

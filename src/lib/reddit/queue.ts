@@ -1,5 +1,6 @@
 import prisma from '../db';
 import ev from 'events';
+import { fetchPosts } from './fetch';
 
 export interface QueueItem {
     id: number;
@@ -24,6 +25,7 @@ class Queue {
             where: { id },
         });
         if (!query) return;
+        this.queue = this.queue.filter((x) => x.id !== id);
         this.queue.push({
             ...query,
             time: new Date(Date.now() + query.timespan * 60 * 60 * 1000),
@@ -51,7 +53,7 @@ class Queue {
         if (!item) return;
         this.queue.push({ ...item, time: new Date(Date.now() + item.timespan * 60 * 60 * 1000) });
 
-        this.events.emit('fetch', item.id);
+        fetchPosts(item.id).catch(() => console.error(`Failed to fetch #${item.id}.`));
         this.refresh();
     }
 
@@ -82,9 +84,7 @@ class Queue {
     }
 
     public get state() {
-        return {
-            queue: this.queue,
-        };
+        return this.queue;
     }
 }
 

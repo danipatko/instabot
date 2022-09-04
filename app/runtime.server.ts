@@ -1,34 +1,22 @@
-import ActivityCycle from 'src/lib/instagram/activity';
 import Instagram from 'src/lib/instagram/account';
+import Queue from 'src/lib/reddit/queue';
 
-let ac: ActivityCycle;
 let ig: Instagram;
+let q: Queue;
 
 declare global {
-    var __ac__: ActivityCycle;
     var __ig__: Instagram;
+    var __q__: Queue;
 }
 
 if (process.env.NODE_ENV === 'production') {
-    ac = new ActivityCycle();
     ig = new Instagram();
+    q = new Queue();
 } else {
-    if (!global.__ac__) global.__ac__ = new ActivityCycle();
     if (!global.__ig__) global.__ig__ = new Instagram();
-
-    ac = global.__ac__;
+    if (!global.__q__) global.__q__ = new Queue();
     ig = global.__ig__;
+    q = global.__q__;
 }
 
-console.log('Events were assigned to AC');
-ac.events.removeAllListeners();
-ac.events.on('login', async () =>
-    ig.loadAccount(ac.currentAccount).then((ok) => {
-        if (!ok) ac.reset();
-    })
-);
-ac.events.on('post', () => ig.post());
-ac.events.on('follow', () => ig.followNext());
-ac.events.on('unfollow', () => ig.unfollowNext());
-
-export { ac, ig };
+export { ig, q as queue };

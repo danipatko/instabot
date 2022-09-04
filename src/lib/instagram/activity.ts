@@ -14,8 +14,6 @@ class AccountQueue {
     public current: Account | null = null;
 
     private async getLeastUsed() {
-        console.log(await prisma.account.findMany({ select: { username: true }, orderBy: { last_used: 'asc' } }));
-
         this.current = (await prisma.account.findFirst({
             select: { id: true, username: true, activity: true },
             where: { NOT: { activity: null } },
@@ -24,7 +22,6 @@ class AccountQueue {
     }
 
     private async updateLastUsed() {
-        console.log(`Updating ${this.current?.id}`);
         if (this.current) await prisma.account.update({ data: { last_used: new Date() }, where: { id: this.current.id } });
     }
 
@@ -72,7 +69,6 @@ class Timer {
 
     public clearAll() {
         this.timings.clear();
-        this.events.removeAllListeners();
     }
 
     private cycle() {

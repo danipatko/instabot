@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import path from 'path/posix';
 import prisma from '../db';
 import fs from 'fs';
+import { defaultCaption } from '../util';
 
 const SAVE_PATH = 'content';
 
@@ -29,32 +30,41 @@ const buildUrl = (f: Fetch) => {
     return url;
 };
 
-const fetchPosts = async (id: number): Promise<Source[] | Source | null | null[]> => {
-    return (
-        prisma.fetch
-            .findFirst({ where: { id } })
-            .then((data) => {
-                if (!data) throw new Error('Query not found.');
-                console.log(buildUrl(data));
-                return fetch(buildUrl(data), { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+const fetchPosts = async (id: number, account_id: number | undefined = undefined) => {
+    return prisma.fetch
+        .findFirst({ where: { id } })
+        .then((data) => {
+            if (!data) throw new Error('Query not found.');
+            console.log(buildUrl(data));
+            return fetch(buildUrl(data), { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+        })
+        .then((res) => {
+            if (!res.ok) throw new Error(`Request returned code ${res.status} - ${res.statusText}`);
+            return res.json() as Promise<RedditQueryResult>;
+        })
+        .then(({ data }) => Promise.map(data.children, ({ data }) => validatePost(data)))
+        .then((posts) =>
+            Promise.map(posts, async (source) => {
+                if (account_id === undefined) await prisma.source.create({ data: source });
+                else
+                    await prisma.source.create({
+                        data: {
+                            ...source,
+                            archived: true,
+                            post: {
+                                create: {
+                                    caption: defaultCaption(source.title, source.author, source.url),
+                                    account_id,
+                                    upload_index: await prisma.post.count({ where: { uploaded: false } }),
+                                },
+                            },
+                        },
+                    });
             })
-            .then((res) => {
-                if (!res.ok) throw new Error(`Request returned code ${res.status} - ${res.statusText}`);
-                return res.json() as Promise<RedditQueryResult>;
-            })
-            // download and convert only posts marked for upload
-            .then(({ data }) => Promise.map(data.children, ({ data }) => validatePost(data)))
-            .then((posts) =>
-                // I know this is anti-pattern, but for some reason,
-                // the prisma.create function is 'not thenable' and
-                // throws an error
-                Promise.map(posts, async (post) => await prisma.source.create({ data: post }))
-            )
-            .catch((e) => {
-                console.log(`Failed to fetch posts from reddit.\n${e}`);
-                return null;
-            })
-    );
+        )
+        .catch((e) => {
+            console.log(`Failed to fetch posts from reddit.\n${e}`);
+        });
 };
 
 const validatePost = async (post: RedditMediaPost) => {

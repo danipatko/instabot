@@ -7,7 +7,7 @@
         "dev:node": "cross-env NODE_ENV=development nodemon",
         "dev:remix": "remix watch",
         "dev:css": "tailwindcss -w -i ./styles/app.css -o app/styles/app.css",
-        "build": "remix build && run-p \"build:*\"",
+        "build": "cross-env NODE_ENV=production remix build && run-p \"build:*\"",
         "build:node": "node server.build.js",
         "build:css": "tailwindcss -m -i ./styles/app.css -o app/styles/app.css",
         "db:migrate": "prisma migrate dev --name",

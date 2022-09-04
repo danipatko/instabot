@@ -30,6 +30,7 @@ model Account {
 
   posts           Post[]
   followers       IgUser[]
+  queries         Fetch[]
 }
 
 model IgUser {
@@ -49,23 +50,20 @@ model Activity {
   id              Int @id @default(autoincrement())
   
   timespan        Int // time before account switch
-  post_target     Int
-
-  follow_target   Int     // number of ppl to follow in a single timespan
-  follow_queue    String  // comma separated ig ids to follow
-
-  unfollow_target Int
-  unfollow_queue  String
-
   auto_upload     Boolean @default(false)
+  
+  post_target     Int
+  follow_target   Int     // number of ppl to follow in a single timespan
+  unfollow_target Int
 
   accounts        Account[]
-  queries         Fetch[]
 }
 
 model Fetch {
   id          Int @id @default(autoincrement())
-  activities  Activity[]
+
+  account_id  Int?
+  account     Account? @relation(fields: [account_id], references: [id], onDelete: SetNull)
   
   enabled     Boolean
   timespan    Float
@@ -76,7 +74,7 @@ model Fetch {
   // configurables
   q           String? // search term 
   sub         String 
-  time         String 
+  time        String 
   sort        String  // rising | hot | best | new 
   type        String  // *.json
   limit       Int     // posts to save
