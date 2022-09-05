@@ -28,7 +28,6 @@ const acceptPost = async (id: number, account_id: number): Promise<boolean> => {
     const source = await prisma.source.findFirst({ select: { title: true, author: true, url: true }, where: { id } });
     if (!source) return false;
 
-    const count = await prisma.post.count({ where: { uploaded: false } });
     return prisma.source
         .update({
             select: { post: true },
@@ -38,7 +37,6 @@ const acceptPost = async (id: number, account_id: number): Promise<boolean> => {
                     create: {
                         caption: defaultCaption(source.title, source.author, source.url),
                         account_id,
-                        upload_index: count,
                     },
                 },
             },
@@ -77,7 +75,8 @@ const upsertFetch = async (
     time: string,
     timespan: number,
     type: string,
-    q: string
+    q: string,
+    account_id: number | null
 ) => {
     return prisma.fetch
         .upsert({
@@ -94,6 +93,7 @@ const upsertFetch = async (
                 page_after: '',
                 page_count: 0,
                 page_reset,
+                account_id,
             },
             update: {
                 q,
@@ -106,6 +106,7 @@ const upsertFetch = async (
                 enabled,
                 timespan,
                 page_reset,
+                account_id,
             },
             where: { id },
         })

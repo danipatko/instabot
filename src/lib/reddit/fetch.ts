@@ -1,12 +1,12 @@
 import { convert, RedditMediaPost, RedditQueryResult } from './types';
 import type { Fetch, Source } from '@prisma/client';
+import { defaultCaption } from '../util';
 import ffmpeg from 'fluent-ffmpeg';
 import { Promise } from 'bluebird';
 import { promisify } from 'util';
 import path from 'path/posix';
 import prisma from '../db';
 import fs from 'fs';
-import { defaultCaption } from '../util';
 
 const SAVE_PATH = 'content';
 
@@ -30,44 +30,47 @@ const buildUrl = (f: Fetch) => {
     return url;
 };
 
-const fetchPosts = async (id: number, account_id: number | undefined = undefined) => {
-    return prisma.fetch
-        .findFirst({ where: { id } })
-        .then((data) => {
-            if (!data) throw new Error('Query not found.');
-            console.log(buildUrl(data));
-            return fetch(buildUrl(data), { method: 'GET', headers: { 'Content-Type': 'application/json' } });
-        })
+const fetchPosts = async (id: number) => {
+    const query = await prisma.fetch.findFirst({
+        include: { account: { select: { activity: { select: { auto_upload: true } } } } },
+        where: { id },
+    });
+    if (!query) return;
+
+    return fetch(buildUrl(query), { method: 'GET', headers: { 'Content-Type': 'application/json' } })
         .then((res) => {
             if (!res.ok) throw new Error(`Request returned code ${res.status} - ${res.statusText}`);
             return res.json() as Promise<RedditQueryResult>;
         })
-        .then(({ data }) => Promise.map(data.children, ({ data }) => validatePost(data)))
-        .then((posts) =>
-            Promise.map(posts, async (source) => {
-                if (account_id === undefined) await prisma.source.create({ data: source });
-                else
-                    await prisma.source.create({
-                        data: {
-                            ...source,
+        .then(({ data }) => data.children.map(({ data }) => validatePost(data)))
+        .then(async (posts) => {
+            return Promise.map(posts, (post) =>
+                prisma.source.create({
+                    data: {
+                        ...post,
+                        ...(query.account?.activity?.auto_upload && {
                             archived: true,
                             post: {
                                 create: {
-                                    caption: defaultCaption(source.title, source.author, source.url),
-                                    account_id,
-                                    upload_index: await prisma.post.count({ where: { uploaded: false } }),
+                                    caption: defaultCaption(post.title, post.author, post.url),
+                                    account_id: query.account_id,
                                 },
                             },
-                        },
-                    });
-            })
-        )
+                        }),
+                    },
+                })
+            );
+        })
+        .then((sources) => {
+            const page_after = sources[sources.length - 1].name;
+            return prisma.fetch.update({ data: { page_after, page_count: query.page_count + sources.length }, where: { id } });
+        })
         .catch((e) => {
             console.log(`Failed to fetch posts from reddit.\n${e}`);
         });
 };
 
-const validatePost = async (post: RedditMediaPost) => {
+const validatePost = (post: RedditMediaPost) => {
     if (post.post_hint === 'image') {
         return { ...convert(post), file: post.name + '.jpg' };
     } else if (post.post_hint === 'hosted:video' && !post.url.endsWith('.gif')) {

@@ -1,6 +1,7 @@
 import { Form, useActionData, useLoaderData, useTransition } from '@remix-run/react';
 import { deleteFetch, getFetch, upsertFetch } from '~/models/post.server';
 import { ActionArgs, LoaderArgs, redirect } from '@remix-run/node';
+import { getAccountList } from '~/models/activity.server';
 import { QueueItem } from 'src/lib/reddit/queue';
 import type { Fetch } from '@prisma/client';
 import { getToken } from '~/session.server';
@@ -14,13 +15,14 @@ export async function loader({ request }: LoaderArgs) {
     const token = await getToken(request);
     if (!token) return redirect('/login');
 
-    return json({ fetch: await getFetch(), queue: queue.state });
+    return json({ fetch: await getFetch(), queue: queue.state, accounts: await getAccountList() });
 }
 
 export async function action({ request }: ActionArgs) {
     const fd = await request.formData().catch(() => null);
     if (!fd) return json({ message: `Invalid formdata.` });
-    const { id, sub, enabled, type, q, sort, time, limit, page_reset, over_18, timespan, remove } = Object.fromEntries(fd);
+    const { id, sub, enabled, type, q, sort, time, limit, page_reset, over_18, timespan, account_id, remove } =
+        Object.fromEntries(fd);
 
     if (remove) {
         const accId = Number(id.toString());
@@ -34,7 +36,18 @@ export async function action({ request }: ActionArgs) {
         return json({ message: ok ? '' : `Failed to remove query ${accId}.` });
     }
 
-    if (!(sub && type && sort && time && limit !== undefined && q !== undefined && page_reset !== undefined))
+    if (
+        !(
+            sub &&
+            type &&
+            sort &&
+            time &&
+            q !== undefined &&
+            limit !== undefined &&
+            page_reset !== undefined &&
+            account_id !== undefined
+        )
+    )
         return json({ message: `Failed to update activity: bad request.` });
 
     const ok = await upsertFetch(
@@ -48,7 +61,8 @@ export async function action({ request }: ActionArgs) {
         time.toString(),
         Number(timespan.toString()),
         type.toString(),
-        q.toString()
+        q.toString(),
+        account_id.toString() == '0' ? null : Number(account_id.toString())
     );
 
     if (ok) {
@@ -65,12 +79,20 @@ type FetchItem = Fetch & {
     } | null;
 };
 
+type Accounts = {
+    accounts: {
+        id: number;
+        username: string;
+    }[];
+};
+
 type QueueProps = {
     fetch: FetchItem[];
     queue: QueueItem[];
+    accounts: { id: number; username: string }[];
 };
 
-const FetchListItem = (props: FetchItem) => {
+const FetchListItem = ({ accounts, ...props }: FetchItem & Accounts) => {
     const transition = useTransition();
 
     return (
@@ -199,6 +221,19 @@ const FetchListItem = (props: FetchItem) => {
                             </select>
                         </dd>
                     </div>
+                    <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                        <dt className="text-sm font-medium text-gray-500 sm:inline-flex sm:items-center">Upload from</dt>
+                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            <select name="account_id" defaultValue={props.account_id ?? 0}>
+                                <option value={0}>None</option>
+                                {accounts.map((x, i) => (
+                                    <option key={i} value={x.id}>
+                                        {x.username}
+                                    </option>
+                                ))}
+                            </select>
+                        </dd>
+                    </div>
                 </div>
                 <div className="flex justify-end">
                     <button name="remove" value="1" type="submit" className="button">
@@ -259,7 +294,7 @@ export default function Queue() {
                 </ul>
 
                 {fetchItems.length ? (
-                    fetchItems.map((x, i) => <FetchListItem key={i} {...x} />)
+                    fetchItems.map((x, i) => <FetchListItem key={i} {...{ ...x, accounts: data.accounts }} />)
                 ) : (
                     <p className="py-12 text-center">There are no activities.</p>
                 )}

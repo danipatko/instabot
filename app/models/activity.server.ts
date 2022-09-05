@@ -19,6 +19,8 @@ const getAccounts = async () => ({
     activities: await prisma.activity.findMany({ select: { id: true } }),
 });
 
+const getAccountList = async () => await prisma.account.findMany({ select: { id: true, username: true } });
+
 const upsertAccount = async (username: string, password: string, activity_id: number, id: number) =>
     prisma.account
         .upsert({
@@ -52,9 +54,7 @@ const upsertActivity = async (
                 timespan,
                 post_target,
                 auto_upload,
-                follow_queue: '',
                 follow_target,
-                unfollow_queue: '',
                 unfollow_target,
             },
             update: {
@@ -72,4 +72,4 @@ const upsertActivity = async (
 
 const deleteActivity = async (id: number) => await prisma.activity.delete({ where: { id } });
 
-export { getAccounts, upsertAccount, deleteAccount, getActivities, upsertActivity, deleteActivity };
+export { getAccounts, getAccountList, upsertAccount, deleteAccount, getActivities, upsertActivity, deleteActivity };

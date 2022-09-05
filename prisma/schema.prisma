@@ -121,5 +121,4 @@ model Post {
   caption       String
 
   created_at    DateTime @default(now())
-  upload_index  Int
 }
