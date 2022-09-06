@@ -3,9 +3,10 @@ import type { Source } from '@prisma/client';
 interface PostProps {
     src: Source;
     children: React.ReactFragment;
+    inline: boolean;
 }
 
-export default function Post({ src, children }: PostProps) {
+export default function Post({ src, children, inline = true }: PostProps) {
     return (
         <div className="px-5 py-3 mt-3 border border-gray-200 shadow-sm rounded-md">
             <div className="pb-2">
@@ -20,8 +21,9 @@ export default function Post({ src, children }: PostProps) {
                     <span className="text-indigo-500 font-semibold">{src.downs}&#8595;</span> ({src.upvote_ratio}%{', '}
                     {src.num_comments} comment{src.num_comments != 1 ? 's' : ''})
                 </div>
-                {children}
+                {inline && children}
             </div>
+            {!inline && children}
         </div>
     );
 }

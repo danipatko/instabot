@@ -41,7 +41,7 @@ model IgUser {
 
   username        String
   fullname        String
-  pk              Int @unique
+  pk              String @unique
   
   created_at      DateTime @default(now())
 }

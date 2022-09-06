@@ -14,7 +14,7 @@ const getArchive = async () =>
 
 const getPending = async () =>
     prisma.source.findMany({
-        where: { post: null },
+        where: { post: null, archived: false },
         orderBy: { ups: 'desc' },
     });
 
@@ -42,6 +42,13 @@ const acceptPost = async (id: number, account_id: number): Promise<boolean> => {
             },
             where: { id },
         })
+        .then(() => true)
+        .catch(() => false);
+};
+
+const changePostCaption = async (id: number, caption: string) => {
+    return prisma.post
+        .update({ data: { caption }, where: { id } })
         .then(() => true)
         .catch(() => false);
 };
@@ -121,4 +128,15 @@ const deleteFetch = async (id: number) => {
         .catch(() => false);
 };
 
-export { getPending, getArchive, getUploaded, acceptPost, archivePost, deletePost, getFetch, upsertFetch, deleteFetch };
+export {
+    getPending,
+    getArchive,
+    getUploaded,
+    acceptPost,
+    archivePost,
+    getFetch,
+    upsertFetch,
+    deleteFetch,
+    changePostCaption,
+    deletePost,
+};

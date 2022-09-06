@@ -1,11 +1,11 @@
-import { AccountFollowersFeedResponseUsersItem, Feed, IgApiClient, IgCheckpointError } from 'instagram-private-api';
+import { Feed, IgApiClient, IgCheckpointError } from 'instagram-private-api';
 import { Account, IgUser } from '@prisma/client';
+import { processPost } from '../reddit/fetch';
+import ActivityCycle from './activity';
 import { Promise } from 'bluebird';
 import { promisify } from 'util';
 import prisma from '../db';
 import fs from 'fs';
-import { processPost } from '../reddit/fetch';
-import ActivityCycle from './activity';
 
 const read = promisify(fs.readFile);
 const write = promisify(fs.writeFile);
@@ -34,9 +34,9 @@ class Instagram {
         ac.events.removeAllListeners();
         ac.events.on('login', () => {
             console.log('Logging in to #%d', ac.currentAccount);
-            // this.loadAccount(ac.currentAccount).then((ok) => {
-            //     if (!ok) ac.reset();
-            // });
+            this.loadAccount(ac.currentAccount).then((ok) => {
+                if (!ok) ac.reset();
+            });
         });
         ac.events.on('post', () => this.post());
         ac.events.on('follow', () => this.followNext());
@@ -48,6 +48,7 @@ class Instagram {
     private async saveState() {
         const serialized = await ig.state.serialize();
         delete serialized.constants;
+        // TODO: write always fails
         return write('session.json', serialized).catch(() => console.log('Failed to save state.'));
     }
 
@@ -86,9 +87,9 @@ class Instagram {
         );
     }
 
-    private async follow(id: number): Promise<boolean> {
+    private async follow(id: string): Promise<boolean> {
         return ig.friendship
-            .create(id)
+            .create(Number(id))
             .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
@@ -97,9 +98,9 @@ class Instagram {
             });
     }
 
-    private async unfollow(id: number): Promise<boolean> {
+    private async unfollow(id: string): Promise<boolean> {
         return ig.friendship
-            .destroy(id)
+            .destroy(Number(id))
             .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
@@ -142,7 +143,7 @@ class Instagram {
         const users = await this.findFollowersOf(this.followBase, true, 100);
         this.followBase = users[users.length - 1].pk;
         users.forEach(async (u) => {
-            await prisma.igUser.create({ data: { ...u, account_id } });
+            await prisma.igUser.create({ data: { ...u, account_id, pk: u.pk.toString() } });
         });
     }
 
@@ -156,7 +157,7 @@ class Instagram {
         if (!this.account) return;
 
         const user = await prisma.igUser.findFirst({
-            select: { id: true },
+            select: { pk: true },
             orderBy: { created_at: 'asc' },
         });
         if (!user) {
@@ -166,7 +167,7 @@ class Instagram {
             }
             return;
         }
-        await this.follow(user.id);
+        await this.follow(user.pk);
     }
 
     public async unfollowNext(self = false): Promise<void> {
@@ -180,7 +181,7 @@ class Instagram {
             }
             return;
         }
-        await this.unfollow(user);
+        await this.unfollow(user.toString());
     }
 
     // process post from reddit then upload to instagram
@@ -191,7 +192,7 @@ class Instagram {
             .findFirst({
                 include: { source: true },
                 where: { account_id: this.account.id, uploaded: false },
-                orderBy: { upload_index: 'asc' },
+                orderBy: { created_at: 'asc' },
             })
             .then((post) => {
                 if (!post) throw new Error('Could not find any posts for uploading.');
