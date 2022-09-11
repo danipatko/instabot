@@ -1,5 +1,5 @@
-import Instagram from 'src/lib/instagram/account';
-import Queue from 'src/lib/reddit/queue';
+import Instagram from '~/lib/instagram/account';
+import Queue from '~/lib/reddit/queue';
 
 let ig: Instagram;
 let q: Queue;

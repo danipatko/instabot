@@ -89,7 +89,7 @@ model Source {
   // meta
   url           String
   dash_url      String?
-  name          String
+  name          String @unique
   title         String
   author        String
   subreddit     String

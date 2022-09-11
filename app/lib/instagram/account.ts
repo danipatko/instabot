@@ -4,7 +4,7 @@ import { processPost } from '../reddit/fetch';
 import ActivityCycle from './activity';
 import { Promise } from 'bluebird';
 import { promisify } from 'util';
-import prisma from '../db';
+import prisma from '../db.server';
 import fs from 'fs';
 
 const read = promisify(fs.readFile);
@@ -49,7 +49,7 @@ class Instagram {
         const serialized = await ig.state.serialize();
         delete serialized.constants;
         // TODO: write always fails
-        return write('session.json', serialized).catch(() => console.log('Failed to save state.'));
+        return write('session.json', JSON.stringify(serialized)).catch(() => console.log('Failed to save state.'));
     }
 
     private async login(username: string, password: string): Promise<boolean> {

@@ -1,13 +1,8 @@
 import { createRequestHandler } from '@remix-run/express';
-// import ActivityCycle from '../lib/instagram/activity';
-// import { fetchPosts } from '../lib/reddit/fetch';
-// import Queue from '../lib/reddit/queue';
 import compression from 'compression';
-import prisma from '../lib/db';
 import express from 'express';
-// import router from './routes';
-import logger from 'morgan';
 import path from 'path/posix';
+import logger from 'morgan';
 
 const app = express();
 
@@ -22,32 +17,6 @@ app.disable('x-powered-by');
 app.use('/content', express.static('./content/'));
 app.use('/build', express.static('public/build', { immutable: true, maxAge: '1y' }));
 app.use(express.static('public', { maxAge: '1h' }));
-
-// misc
-// app.get('/test', async (req, res) => {
-//     const r = await fetchPosts(1);
-//     res.json(r);
-// });
-
-app.get('/pog', async (req, res) => {
-    const { id } = await prisma.fetch.create({
-        data: {
-            enabled: true,
-            limit: 2,
-            over_18: true,
-            page_after: '',
-            page_count: 0,
-            page_reset: 10,
-            sort: 'hot',
-            sub: 'wordington',
-            time: 'year',
-            timespan: 0.001,
-            type: 'hot',
-        },
-    });
-    console.log(id);
-    res.send('ok ' + id);
-});
 
 // remix
 const BUILD_DIR = path.join(process.cwd(), 'build');
@@ -76,9 +45,6 @@ function purgeRequireCache() {
         }
     }
 }
-
-// routes
-// app.use('/api', router);
 
 // entry
 app.listen(3000, '0.0.0.0', () => console.log('Server listening on http://0.0.0.0:3000\n'));

@@ -1,18 +1,4 @@
-import prisma from 'src/lib/db';
-
-interface BaseActivity {
-    id: number;
-    timespan: number; // in minutes
-    post_target: number;
-    follow_target: number;
-    unfollow_target: number;
-}
-
-interface Activity extends BaseActivity {
-    auto_upload: boolean;
-    follow_queue: string;
-    unfollow_queue: string;
-}
+import prisma from '~/lib/db.server';
 
 const getAccounts = async () => ({
     accounts: await prisma.account.findMany(),

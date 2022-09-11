@@ -1,7 +1,8 @@
+import { defaultCaption } from '~/lib/util.server';
+import prisma from '~/lib/db.server';
 import { promisify } from 'util';
-import prisma from 'src/lib/db';
+import path from 'path/posix';
 import fs from 'fs';
-import { defaultCaption } from 'src/lib/util';
 
 const rm = promisify(fs.rm);
 
@@ -62,7 +63,7 @@ const archivePost = async (id: number) =>
 const deletePost = async (id: number): Promise<boolean> =>
     prisma.source
         .delete({ where: { id } })
-        .then(({ file }) => rm(file))
+        .then(({ file }) => rm(path.join('content', file)))
         .then(() => true)
         .catch((e) => {
             console.error(`Failed to delete post ${id}.\n${e}`);

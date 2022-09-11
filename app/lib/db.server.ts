@@ -24,9 +24,3 @@ function getClient() {
 }
 
 export default prisma;
-
-// export * from './accounts';
-// export * from './activity';
-// export * from './users';
-// export * from './fetch';
-// export * from './posts';

@@ -1,6 +1,6 @@
 import { TokenData } from '~/session.server';
-import { randstr } from 'src/lib/util';
-import prisma from '../../src/lib/db';
+import { randstr } from '~/lib/util.server';
+import prisma from '~/lib/db.server';
 
 const getUsers = async () => {
     return await prisma.user.findMany();

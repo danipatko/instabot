@@ -27,7 +27,7 @@ const esbuild = require('esbuild');
         bundle: true,
         platform: 'node',
         tsconfig: 'tsconfig.server.json',
-        entryPoints: ['./src/server/index.ts'],
+        entryPoints: ['./src/index.ts'],
     });
 
     console.timeEnd('Build time');

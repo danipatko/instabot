@@ -789,16 +789,16 @@ input,
   width: 1.5rem;
 }
 
+.w-full {
+  width: 100%;
+}
+
 .w-10 {
   width: 2.5rem;
 }
 
 .w-4 {
   width: 1rem;
-}
-
-.w-full {
-  width: 100%;
 }
 
 .w-44 {
@@ -1327,6 +1327,10 @@ input,
 
 .ring-opacity-5 {
   --tw-ring-opacity: 0.05;
+}
+
+.filter {
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 
 .transition {

@@ -1,4 +1,4 @@
-import prisma from '../db';
+import prisma from '../db.server';
 import ev from 'events';
 import { fetchPosts } from './fetch';
 

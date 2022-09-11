@@ -1,11 +1,11 @@
 import { convert, RedditMediaPost, RedditQueryResult } from './types';
 import type { Fetch, Source } from '@prisma/client';
-import { defaultCaption } from '../util';
+import { defaultCaption } from '../util.server';
 import ffmpeg from 'fluent-ffmpeg';
 import { Promise } from 'bluebird';
 import { promisify } from 'util';
+import prisma from '../db.server';
 import path from 'path/posix';
-import prisma from '../db';
 import fs from 'fs';
 
 const SAVE_PATH = 'content';
@@ -43,25 +43,29 @@ const fetchPosts = async (id: number) => {
             return res.json() as Promise<RedditQueryResult>;
         })
         .then(({ data }) => data.children.map(({ data }) => validatePost(data)))
-        .then(async (posts) => {
-            return Promise.map(posts, (post) =>
-                prisma.source.create({
-                    data: {
-                        ...post,
-                        ...(query.account?.activity?.auto_upload && {
-                            archived: true,
-                            post: {
-                                create: {
-                                    caption: defaultCaption(post.title, post.author, post.url),
-                                    account_id: query.account_id,
+        .then((posts) => {
+            console.log(`Received ${posts.length} posts.`);
+            return Promise.map(
+                posts,
+                async (post) =>
+                    await prisma.source.create({
+                        data: {
+                            ...post,
+                            ...(query.account?.activity?.auto_upload && {
+                                archived: true,
+                                post: {
+                                    create: {
+                                        caption: defaultCaption(post.title, post.author, post.url),
+                                        account_id: query.account_id,
+                                    },
                                 },
-                            },
-                        }),
-                    },
-                })
+                            }),
+                        },
+                    })
             );
         })
         .then((sources) => {
+            if (!sources.length) return;
             const page_after = sources[sources.length - 1].name;
             return prisma.fetch.update({ data: { page_after, page_count: query.page_count + sources.length }, where: { id } });
         })

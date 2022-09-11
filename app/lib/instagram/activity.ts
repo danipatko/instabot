@@ -1,5 +1,5 @@
 import { Activity } from '@prisma/client';
-import prisma from '../db';
+import prisma from '../db.server';
 import ev from 'events';
 
 const halfMinInHours = 1 / 2 / 60;

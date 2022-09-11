@@ -13,7 +13,11 @@ export default function Post({ src, children, inline = true }: PostProps) {
                 <div className="font-semibold text-black text-base">{src.title}</div>
                 <div className="-mt-1 text-gray-600 text-xs">by {src.author}</div>
             </div>
-            {src.dash_url ? <video data-dashjs-player src={src.dash_url} controls /> : <img src={src.url} alt={src.title} />}
+            {src.dash_url ? (
+                <video className="w-full" data-dashjs-player src={src.dash_url} controls></video>
+            ) : (
+                <img src={src.url} alt={src.title} />
+            )}
             <div className="-mt-5 ml-2 z-20 text-xs font-semibold text-orange-600">#{src.name}</div>
             <div className="p-2 flex justify-between items-center">
                 <div className="mt-1 text-sm text-gray-500 sm:mt-0 sm:col-span-2">
