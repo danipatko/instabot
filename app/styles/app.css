@@ -419,11 +419,6 @@ input,
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
-.fadein {
-  -webkit-animation: fadein 500ms ease-in;
-          animation: fadein 500ms ease-in;
-}
-
 @-webkit-keyframes fadein {
   from {
     opacity: 0;
@@ -825,10 +820,6 @@ input,
   flex: 1 1 0%;
 }
 
-.flex-shrink-0 {
-  flex-shrink: 0;
-}
-
 .origin-top-right {
   transform-origin: top right;
 }
@@ -1211,11 +1202,6 @@ input,
 .text-indigo-700 {
   --tw-text-opacity: 1;
   color: rgb(67 56 202 / var(--tw-text-opacity));
-}
-
-.text-indigo-600 {
-  --tw-text-opacity: 1;
-  color: rgb(79 70 229 / var(--tw-text-opacity));
 }
 
 .text-gray-600 {

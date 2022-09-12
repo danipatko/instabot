@@ -1,12 +1,12 @@
 import { acceptPost, archivePost, deletePost, getPending } from '~/models/post.server';
-import { ActionArgs, LoaderArgs, redirect } from '@remix-run/node';
 import { Form, useActionData, useLoaderData } from '@remix-run/react';
+import { ActionArgs, LoaderArgs, redirect } from '@remix-run/node';
+import { getAccountList } from '~/models/activity.server';
 import { Menu, Transition } from '@headlessui/react';
 import { getToken } from '~/session.server';
 import { json } from '@remix-run/node';
 import Post from '~/components/Post';
 import { Fragment } from 'react';
-import { getAccountList } from '~/models/activity.server';
 
 export async function loader({ request }: LoaderArgs) {
     const token = await getToken(request);
@@ -51,19 +51,8 @@ export default function Posts() {
                                     <Menu as="div" className="relative">
                                         <div className="inline-flex mt-2 justify-end">
                                             <Menu.Button>
-                                                <svg
-                                                    className="h-6 w-6"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    strokeWidth="1.5"
-                                                    stroke="currentColor"
-                                                    aria-hidden="true">
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                                                    />
+                                                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                                                 </svg>
                                             </Menu.Button>
                                         </div>
@@ -75,15 +64,12 @@ export default function Posts() {
                                             enterTo="transform opacity-100 scale-100"
                                             leave="transition ease-in duration-75"
                                             leaveFrom="transform opacity-100 scale-100"
-                                            leaveTo="transform opacity-0 scale-95">
+                                            leaveTo="transform opacity-0 scale-95"
+                                        >
                                             <Menu.Items className="absolute right-0 bottom-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                                 <Menu.Item>
                                                     {({ active }) => (
-                                                        <a
-                                                            href={x.url}
-                                                            className={`${
-                                                                active ? 'bg-gray-200' : 'text-gray-900'
-                                                            } block text-center w-full items-center rounded-t-md px-2 py-2 text-sm`}>
+                                                        <a href={x.url} className={`${active ? 'bg-gray-200' : 'text-gray-900'} block text-center w-full items-center rounded-t-md px-2 py-2 text-sm`}>
                                                             Open original
                                                         </a>
                                                     )}
@@ -94,9 +80,8 @@ export default function Posts() {
                                                             <button
                                                                 value={x.id}
                                                                 name="account_id"
-                                                                className={`${
-                                                                    active ? 'bg-gray-200' : 'text-gray-900'
-                                                                } group w-full items-center px-2 py-2 text-sm`}>
+                                                                className={`${active ? 'bg-gray-200' : 'text-gray-900'} group w-full items-center px-2 py-2 text-sm`}
+                                                            >
                                                                 Upload from {x.username}
                                                             </button>
                                                         )}
@@ -104,12 +89,7 @@ export default function Posts() {
                                                 ))}
                                                 <Menu.Item>
                                                     {({ active }) => (
-                                                        <button
-                                                            value="archive"
-                                                            name="action"
-                                                            className={`${
-                                                                active ? 'bg-gray-200' : 'text-gray-900'
-                                                            } group w-full items-center px-2 py-2 text-sm`}>
+                                                        <button value="archive" name="action" className={`${active ? 'bg-gray-200' : 'text-gray-900'} group w-full items-center px-2 py-2 text-sm`}>
                                                             Archive
                                                         </button>
                                                     )}
@@ -119,9 +99,8 @@ export default function Posts() {
                                                         <button
                                                             value="delete"
                                                             name="action"
-                                                            className={`${
-                                                                active ? 'bg-gray-200' : 'text-gray-900'
-                                                            } group w-full items-center rounded-b-md px-2 py-2 text-sm`}>
+                                                            className={`${active ? 'bg-gray-200' : 'text-gray-900'} group w-full items-center rounded-b-md px-2 py-2 text-sm`}
+                                                        >
                                                             Delete
                                                         </button>
                                                     )}

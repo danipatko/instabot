@@ -28,6 +28,8 @@ prisma/migrations/
 
 public/*.mp4
 public/*.jpg
+public/*.png
+public/*.gif
 
 .misc
 content/*
