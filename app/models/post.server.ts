@@ -1,9 +1,9 @@
 import { defaultCaption } from '~/lib/util.server';
+import logger from '~/lib/log.server';
 import prisma from '~/lib/db.server';
 import { promisify } from 'util';
 import path from 'path/posix';
 import fs from 'fs';
-import logger from '~/lib/log.server';
 
 const rm = promisify(fs.rm);
 
@@ -34,7 +34,7 @@ const acceptPost = async (id: number, account_id: number): Promise<boolean> => {
         .update({
             select: { post: true },
             data: {
-                archived: true,
+                archived: false,
                 post: {
                     create: {
                         caption: defaultCaption(source.title, source.author, source.url),
@@ -55,11 +55,14 @@ const changePostCaption = async (id: number, caption: string) => {
         .catch(() => false);
 };
 
-const archivePost = async (id: number) =>
+const archivePost = async (id: number, post = false) =>
     prisma.source
-        .update({ select: { id: true }, data: { archived: true }, where: { id } })
+        .update({ data: { archived: true, ...(post && { post: { delete: true } }) }, where: { id } })
         .then(() => true)
-        .catch(() => false);
+        .catch((e) => {
+            console.log(e);
+            return false;
+        });
 
 const deletePost = async (id: number): Promise<boolean> =>
     prisma.source

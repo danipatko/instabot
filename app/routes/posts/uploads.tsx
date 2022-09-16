@@ -1,12 +1,12 @@
+import { archivePost, changePostCaption, deletePost, getUploaded } from '~/models/post.server';
 import { ActionArgs, LoaderArgs, MetaFunction, redirect } from '@remix-run/node';
-import { archivePost, changePostCaption, deletePost, getArchive, getUploaded } from '~/models/post.server';
+import { getAccountList } from '~/models/activity.server';
 import { Form, useLoaderData } from '@remix-run/react';
 import { Menu, Transition } from '@headlessui/react';
 import { getToken } from '~/session.server';
 import { json } from '@remix-run/node';
 import Post from '~/components/Post';
 import { Fragment } from 'react';
-import { getAccountList } from '~/models/activity.server';
 
 export async function loader({ request }: LoaderArgs) {
     const token = await getToken(request);
@@ -35,7 +35,7 @@ export async function action({ request }: ActionArgs) {
         case 'save':
             if (caption) ok = await changePostCaption(_id, caption.toString());
         default:
-            ok = await archivePost(_id);
+            ok = await archivePost(_id, true);
             break;
     }
 
@@ -54,14 +54,21 @@ export default function Posts() {
                             <Post key={i} src={x.source} inline={false}>
                                 {/* @ts-ignore */}
                                 <Form reloadDocument method="post">
-                                    <input type="number" className="hidden" readOnly name="id" value={x.id} />
+                                    <input type="number" className="hidden" readOnly name="id" value={x.source.id} />
                                     <textarea
                                         className="w-full text-xs p-2 rounded-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                         name="caption"
                                         defaultValue={x.caption}
                                         rows={4}></textarea>
                                     <Menu as="div" className="relative">
-                                        <div className="flex justify-end">
+                                        <div className="flex justify-between items-center">
+                                            <div className="text-xs text-gray-500 font-semibold">
+                                                {x.uploaded && (
+                                                    <>
+                                                        <span className="text-green-400 text-lg">&#10003;</span> uploaded
+                                                    </>
+                                                )}
+                                            </div>
                                             <Menu.Button className="block">
                                                 <svg
                                                     className="h-6 w-6"
