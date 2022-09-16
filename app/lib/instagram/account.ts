@@ -6,6 +6,7 @@ import { Promise } from 'bluebird';
 import { promisify } from 'util';
 import prisma from '../db.server';
 import fs from 'fs';
+import logger from '../log.server';
 
 const read = promisify(fs.readFile);
 const write = promisify(fs.writeFile);
@@ -33,7 +34,7 @@ class Instagram {
 
         ac.events.removeAllListeners();
         ac.events.on('login', () => {
-            console.log('Logging in to #%d', ac.currentAccount);
+            logger.info('Loggin in to #%s', ac.currentAccount);
             this.loadAccount(ac.currentAccount).then((ok) => {
                 if (!ok) ac.reset();
             });
@@ -49,7 +50,7 @@ class Instagram {
         const serialized = await ig.state.serialize();
         delete serialized.constants;
         // TODO: write always fails
-        return write('session.json', JSON.stringify(serialized)).catch(() => console.log('Failed to save state.'));
+        return write('session.json', JSON.stringify(serialized)).catch(() => logger.error('Failed to save session state.'));
     }
 
     private async login(username: string, password: string): Promise<boolean> {
@@ -63,12 +64,11 @@ class Instagram {
         })
             .then(() => true)
             .catch(IgCheckpointError, async () => {
-                console.log(ig.state.checkpoint); // Checkpoint info here
                 await ig.challenge.auto(true); // Requesting sms-code or click "It was me" button
                 return false;
             })
             .catch((e) => {
-                console.error(`Could not resolve checkpoint:\n${e}\n${e.stack}`);
+                logger.warn(`Could not resolve checkpoint:\n${e}\n${e.stack}`);
                 return false;
             });
     }
@@ -93,7 +93,7 @@ class Instagram {
             .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
-                console.error(`Failed to follow user ${id}.\n${e}`);
+                logger.warn(`Failed to follow user ${id}.\n${e}`);
                 return false;
             });
     }
@@ -104,7 +104,7 @@ class Instagram {
             .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
-                console.error(`Failed to unfollow user ${id}.\n${e}`);
+                logger.warn(`Failed to unfollow user ${id}.\n${e}`);
                 return false;
             });
     }
@@ -204,7 +204,7 @@ class Instagram {
             })
             .then(() => true)
             .catch((e) => {
-                console.error(`Failed to publish post to instagram.\n${e}`);
+                logger.warn(`Failed to publish post to instagram.\n${e}`);
                 return false;
             });
     }

@@ -54,6 +54,7 @@
         "node-fetch": "^3.2.10",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "tiny-invariant": "^1.2.0"
+        "tiny-invariant": "^1.2.0",
+        "winston": "^3.8.2"
     }
 }

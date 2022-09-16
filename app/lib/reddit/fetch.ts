@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import prisma from '../db.server';
 import path from 'path/posix';
 import fs from 'fs';
+import logger from '../log.server';
 
 const SAVE_PATH = 'content';
 
@@ -43,9 +44,8 @@ const fetchPosts = async (id: number) => {
             return res.json() as Promise<RedditQueryResult>;
         })
         .then(({ data }) => data.children.map(({ data }) => validatePost(data)))
-        .then((posts) => {
-            console.log(`Received ${posts.length} posts.`);
-            return Promise.map(
+        .then((posts) =>
+            Promise.map(
                 posts,
                 async (post) =>
                     await prisma.source.create({
@@ -62,16 +62,14 @@ const fetchPosts = async (id: number) => {
                             }),
                         },
                     })
-            );
-        })
+            )
+        )
         .then((sources) => {
             if (!sources.length) return;
             const page_after = sources[sources.length - 1].name;
             return prisma.fetch.update({ data: { page_after, page_count: query.page_count + sources.length }, where: { id } });
         })
-        .catch((e) => {
-            console.log(`Failed to fetch posts from reddit.\n${e}`);
-        });
+        .catch((e) => logger.warn(`Failed to fetch posts from reddit.\n${e}`));
 };
 
 const validatePost = (post: RedditMediaPost) => {
@@ -87,12 +85,12 @@ const validatePost = (post: RedditMediaPost) => {
 };
 
 const processPost = async (post: Source) => {
-    console.log(`Processing ${post.name}`);
+    logger.info(`Processing ${post.name}`);
     return post.post_hint === 'image' ? dlImage(post.url, post.name) : dlVideo(post.url, post.name);
 };
 
 const dl = async (url: string, _path: string): Promise<void> => {
-    console.log(`Downloading ${url} to ${_path}`);
+    logger.info(`Downloading ${url} to ${_path}`);
     return fetch(url)
         .then((res) => {
             if (res.ok) return res.arrayBuffer();
@@ -141,7 +139,7 @@ const dlVideo = async (url: string, name: string): Promise<[string, string]> => 
 };
 
 const processImage = async (input: string, output: string, removeInput = true) => {
-    console.log(`Converting image (${input} => ${output})`);
+    logger.info(`Converting image (${input} => ${output})`);
     return new Promise<void>((res, rej) =>
         ffmpeg()
             .input(input)
@@ -159,7 +157,7 @@ const processImage = async (input: string, output: string, removeInput = true) =
 };
 
 const processVideo = async (inputV: string, inputA: string, output: string, cover: string, removeInput = true) => {
-    console.log(`Converting video (${inputV} => ${output})`);
+    logger.info(`Converting video (${inputV} => ${output})`);
     return new Promise<void>((res, rej) =>
         ffmpeg()
             .input(inputV)
@@ -178,7 +176,7 @@ const processVideo = async (inputV: string, inputA: string, output: string, cove
             })
             .once('end', () => {
                 if (removeInput) {
-                    console.log(`Removing ${inputA} and ${inputV}`);
+                    logger.info(`Removing ${inputA} and ${inputV}`);
                     rm(inputA)
                         .then(() => rm(inputV))
                         .then(res)
@@ -186,7 +184,7 @@ const processVideo = async (inputV: string, inputA: string, output: string, cove
                 } else res();
             })
             .once('error', (e) => {
-                console.error(`Video conversion (${inputV} => ${output}) failed:\n${e}`);
+                logger.warn(`Video conversion (${inputV} => ${output}) failed:\n${e}`);
                 rej(e);
             })
             .run()

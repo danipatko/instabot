@@ -1,15 +1,18 @@
 import { createRequestHandler } from '@remix-run/express';
+import { createWriteStream } from 'fs';
 import compression from 'compression';
 import express from 'express';
 import path from 'path/posix';
-import logger from 'morgan';
+import morgan from 'morgan';
 
 const app = express();
 
 // middleware
 app.use(compression());
-app.use(logger('dev'));
 app.disable('x-powered-by');
+const accessLogStream = createWriteStream('access.log', { flags: 'a' });
+app.use(morgan('combined', { stream: accessLogStream }));
+
 // app.use(express.urlencoded({ extended: true }));
 // app.use(express.json());
 

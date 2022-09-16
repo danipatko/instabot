@@ -3,6 +3,7 @@ import prisma from '~/lib/db.server';
 import { promisify } from 'util';
 import path from 'path/posix';
 import fs from 'fs';
+import logger from '~/lib/log.server';
 
 const rm = promisify(fs.rm);
 
@@ -66,7 +67,7 @@ const deletePost = async (id: number): Promise<boolean> =>
         .then(({ file }) => rm(path.join('content', file)))
         .then(() => true)
         .catch((e) => {
-            console.error(`Failed to delete post ${id}.\n${e}`);
+            logger.warn(`Failed to delete post ${id}.\n${e}`);
             return false;
         });
 

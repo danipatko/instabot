@@ -1,6 +1,7 @@
 import { Activity } from '@prisma/client';
 import prisma from '../db.server';
 import ev from 'events';
+import logger from '../log.server';
 
 const halfMinInHours = 1 / 2 / 60;
 
@@ -73,11 +74,9 @@ class Timer {
 
     private cycle() {
         const elapsed = (Date.now() - this.timeStarted) / (1000 * 60 * 60); // in hours
-        console.log(`Elapsed: ${elapsed}`);
-        console.log(this.timings.size);
         this.timings.forEach((t, k) => {
             const next = t.interval * (t.done + 1);
-            console.log(`Next tick for ${k}: ${next}`);
+            logger.info('Next tick for %s: %s', k, next);
             if (next + halfMinInHours > elapsed && elapsed > next - halfMinInHours && t.done < t.total) {
                 t.done++;
                 this.events.emit(k);
@@ -159,7 +158,7 @@ class ActivityCycle {
 
     public async start() {
         const account = this.accountQueue.current;
-        if (!account) return void console.log('No accounts in queue.');
+        if (!account) return;
 
         if (this.halted) {
             this.halted = false;

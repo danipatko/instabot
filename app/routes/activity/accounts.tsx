@@ -26,10 +26,7 @@ export async function action({ request }: ActionArgs) {
         return json({ message: ok ? '' : `Failed to remove account ${accId}.` });
     }
 
-    console.log(activity_id.toString());
-
     if (!(username && password)) return json({ message: `Failed to update account: bad request.` });
-    console.log(Number(activity_id));
     const ok = await upsertAccount(username.toString(), password.toString(), Number(activity_id), Number(id));
     return json({ message: ok ? '' : `Failed to update account.` });
 }

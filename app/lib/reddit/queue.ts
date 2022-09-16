@@ -1,6 +1,7 @@
 import prisma from '../db.server';
 import ev from 'events';
 import { fetchPosts } from './fetch';
+import logger from '../log.server';
 
 export interface QueueItem {
     id: number;
@@ -53,7 +54,7 @@ class Queue {
         if (!item) return;
         this.queue.push({ ...item, time: new Date(Date.now() + item.timespan * 60 * 60 * 1000) });
 
-        fetchPosts(item.id).catch(() => console.error(`Failed to fetch #${item.id}.`));
+        fetchPosts(item.id).catch(() => logger.warn(`Failed to fetch #${item.id}.`));
         this.refresh();
     }
 
@@ -63,7 +64,7 @@ class Queue {
         const next = this.queue[0];
         if (!next) return;
 
-        console.log(`Waiting for next item '${next.name}' at ${next.time.toLocaleString()}`);
+        logger.info(`Waiting for next item '${next.name}' at ${next.time.toLocaleString()}`);
         this.timer = setTimeout(() => this.tick(), next.time.getTime() - Date.now());
     }
 
@@ -79,7 +80,7 @@ class Queue {
                 name: `r/${query.sub}/${query.type}`,
             });
         }
-        console.log(`Loaded ${this.queue.length} queries from database. Refreshing...`);
+        logger.info(`Loaded ${this.queue.length} queries from database. Refreshing...`);
         this.refresh();
     }
 
