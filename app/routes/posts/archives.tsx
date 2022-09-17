@@ -1,5 +1,5 @@
 import { ActionArgs, LoaderArgs, MetaFunction, redirect } from '@remix-run/node';
-import { acceptPost, deletePost, getArchive } from '~/models/post.server';
+import { acceptPost, deletePost, getArchive, removeArchives } from '~/models/post.server';
 import { Form, useLoaderData } from '@remix-run/react';
 import { Menu, Transition } from '@headlessui/react';
 import { getToken } from '~/session.server';
@@ -28,6 +28,9 @@ export async function action({ request }: ActionArgs) {
 
     let ok = true;
     switch (action.toString()) {
+        case 'remove':
+            ok = await removeArchives();
+            break;
         case 'upload':
             ok = await acceptPost(_id, 1);
             break;
@@ -45,6 +48,14 @@ export default function Posts() {
     return (
         <div className="min-h-full flex justify-center p-2 sm:px-6 lg:px-8">
             <div className="max-w-md">
+                <Form reloadDocument method="post">
+                    <div className="text-center p-2">
+                        <input type="number" name="id" className="hidden" readOnly value={0} />
+                        <button className="button" name="action" value="remove">
+                            Remove all
+                        </button>
+                    </div>
+                </Form>
                 <ul>
                     {data.map((x, i) => {
                         return (
@@ -55,19 +66,8 @@ export default function Posts() {
                                     <Menu as="div" className="relative">
                                         <div className="inline-flex mt-2 justify-end">
                                             <Menu.Button>
-                                                <svg
-                                                    className="h-6 w-6"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    strokeWidth="1.5"
-                                                    stroke="currentColor"
-                                                    aria-hidden="true">
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                                                    />
+                                                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                                                 </svg>
                                             </Menu.Button>
                                         </div>
@@ -79,27 +79,19 @@ export default function Posts() {
                                             enterTo="transform opacity-100 scale-100"
                                             leave="transition ease-in duration-75"
                                             leaveFrom="transform opacity-100 scale-100"
-                                            leaveTo="transform opacity-0 scale-95">
+                                            leaveTo="transform opacity-0 scale-95"
+                                        >
                                             <Menu.Items className="absolute right-0 bottom-0 mt-2 w-44 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                                 <Menu.Item>
                                                     {({ active }) => (
-                                                        <a
-                                                            href={x.url}
-                                                            className={`${
-                                                                active ? 'bg-gray-200' : 'text-gray-900'
-                                                            } block text-center w-full items-center rounded-t-md px-2 py-2 text-sm`}>
+                                                        <a href={x.url} className={`${active ? 'bg-gray-200' : 'text-gray-900'} block text-center w-full items-center rounded-t-md px-2 py-2 text-sm`}>
                                                             Open original
                                                         </a>
                                                     )}
                                                 </Menu.Item>
                                                 <Menu.Item>
                                                     {({ active }) => (
-                                                        <button
-                                                            value="upload"
-                                                            name="action"
-                                                            className={`${
-                                                                active ? 'bg-gray-200' : 'text-gray-900'
-                                                            } group w-full items-center px-2 py-2 text-sm`}>
+                                                        <button value="upload" name="action" className={`${active ? 'bg-gray-200' : 'text-gray-900'} group w-full items-center px-2 py-2 text-sm`}>
                                                             Upload
                                                         </button>
                                                     )}
@@ -109,9 +101,8 @@ export default function Posts() {
                                                         <button
                                                             value="delete"
                                                             name="action"
-                                                            className={`${
-                                                                active ? 'bg-gray-200' : 'text-gray-900'
-                                                            } group w-full items-center rounded-b-md px-2 py-2 text-sm`}>
+                                                            className={`${active ? 'bg-gray-200' : 'text-gray-900'} group w-full items-center rounded-b-md px-2 py-2 text-sm`}
+                                                        >
                                                             Delete
                                                         </button>
                                                     )}

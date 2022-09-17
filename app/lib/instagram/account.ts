@@ -187,16 +187,17 @@ class Instagram {
     // process post from reddit then upload to instagram
     public async post(): Promise<Boolean> {
         if (!this.account) return false;
+        const account_id = this.account.id;
 
         return prisma.post
             .findFirst({
                 include: { source: true },
-                where: { account_id: this.account.id, uploaded: false },
+                where: { account_id, uploaded: false },
                 orderBy: { created_at: 'asc' },
             })
             .then((post) => {
                 if (!post) throw new Error('Could not find any posts for uploading.');
-                return Promise.all([processPost(post.source), post]);
+                return Promise.all([processPost(post.source), post, prisma.post.update({ data: { uploaded: true }, where: { id: post.id } })]);
             })
             .then(([file, post]) => {
                 if (typeof file === 'string') return this.publishPhoto(file, post.caption);
