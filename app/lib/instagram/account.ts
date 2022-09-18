@@ -88,8 +88,7 @@ class Instagram {
     }
 
     private async follow(id: string): Promise<boolean> {
-        return ig.friendship
-            .create(Number(id))
+        return Promise.try(() => ig.friendship.create(Number(id)))
             .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
@@ -99,8 +98,7 @@ class Instagram {
     }
 
     private async unfollow(id: string): Promise<boolean> {
-        return ig.friendship
-            .destroy(Number(id))
+        return Promise.try(() => ig.friendship.destroy(Number(id)))
             .then(() => prisma.igUser.deleteMany({ where: { pk: id } }))
             .then(() => true)
             .catch((e) => {
@@ -197,12 +195,18 @@ class Instagram {
             })
             .then((post) => {
                 if (!post) throw new Error('Could not find any posts for uploading.');
-                return Promise.all([processPost(post.source), post, prisma.post.update({ data: { uploaded: true }, where: { id: post.id } })]);
+                return Promise.all([
+                    processPost(post.source),
+                    post,
+                    prisma.post.update({ data: { uploaded: true }, where: { id: post.id } }),
+                ]);
             })
-            .then(([file, post]) => {
-                if (typeof file === 'string') return this.publishPhoto(file, post.caption);
-                else return this.publishVideo(file[0], file[1], post.caption);
-            })
+            .then(([file, post]) =>
+                Promise.try(() => {
+                    if (typeof file === 'string') return this.publishPhoto(file, post.caption);
+                    else return this.publishVideo(file[0], file[1], post.caption);
+                })
+            )
             .then(() => true)
             .catch((e) => {
                 logger.warn(`Failed to publish post to instagram.\n${e}`);
