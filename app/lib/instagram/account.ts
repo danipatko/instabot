@@ -74,17 +74,27 @@ class Instagram {
     }
 
     private async publishPhoto(_path: string, caption: string) {
-        return read(_path).then((file) => ig.publish.photo({ file, caption }));
+        return read(_path).then((file) => {
+            Promise.try(() => {
+                ig.publish.photo({ file, caption });
+            }).catch((e) => {
+                logger.warn(`Failed to publish photo on instagram.\n${e}`);
+            });
+        });
     }
 
     private async publishVideo(_path: string, cover: string, caption: string) {
-        return Promise.all([read(_path), read(cover)]).then(([video, coverImage]) =>
-            ig.publish.video({
-                video,
-                caption,
-                coverImage,
-            })
-        );
+        return Promise.all([read(_path), read(cover)]).then(([video, coverImage]) => {
+            Promise.try(() => {
+                ig.publish.video({
+                    video,
+                    caption,
+                    coverImage,
+                });
+            }).catch((e) => {
+                logger.warn(`Failed to publish video on instagram.\n${e}`);
+            });
+        });
     }
 
     private async follow(id: string): Promise<boolean> {
@@ -193,7 +203,7 @@ class Instagram {
                 where: { account_id, uploaded: false },
                 orderBy: { created_at: 'asc' },
             })
-            .then((post) => {
+            .then(async (post) => {
                 if (!post) throw new Error('Could not find any posts for uploading.');
                 return Promise.all([
                     processPost(post.source),
@@ -201,12 +211,10 @@ class Instagram {
                     prisma.post.update({ data: { uploaded: true }, where: { id: post.id } }),
                 ]);
             })
-            .then(([file, post]) =>
-                Promise.try(() => {
-                    if (typeof file === 'string') return this.publishPhoto(file, post.caption);
-                    else return this.publishVideo(file[0], file[1], post.caption);
-                })
-            )
+            .then(async ([file, post]) => {
+                if (typeof file === 'string') return await this.publishPhoto(file, post.caption);
+                else return await this.publishVideo(file[0], file[1], post.caption);
+            })
             .then(() => true)
             .catch((e) => {
                 logger.warn(`Failed to publish post to instagram.\n${e}`);
